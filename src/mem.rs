@@ -1,4 +1,5 @@
-const RAM_START: u16 = 0xff80;
+const INTERNAL_RAM_START: u16 = 0xc000;
+const ECHO_INTERNAL_RAM_START: u16 = 0xe000;
 const INTERRUPT_ENABLE_REGISTER_START: u16 = 0xffff;
 const VRAM_START: u16 = 0x8000;
 
@@ -8,9 +9,9 @@ pub struct Mem {
 }
 
 pub fn init_mem(cart: Vec<u8>) -> Mem {
-    let ram_size: usize = INTERRUPT_ENABLE_REGISTER_START as usize - RAM_START as usize;
+    let ram_size: usize = INTERRUPT_ENABLE_REGISTER_START as usize - INTERNAL_RAM_START as usize;
     Mem {
-        cart: cart,
+        cart,
         ram: vec![0; ram_size],
     }
 }
@@ -29,13 +30,11 @@ impl Mem {
 
         if address < VRAM_START {
             return self.cart[address_usize];
-        } else if address > RAM_START && address < INTERRUPT_ENABLE_REGISTER_START {
-            return self.ram[RAM_START as usize + address_usize];
+        } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
+            return self.ram[INTERNAL_RAM_START as usize + address_usize];
         } else {
             panic!("Trying to read invalid/unimplemented memory area");
         };
-
-        return 0;
     }
 
     pub fn write(&mut self, address: u16, data: u8) {
@@ -43,10 +42,10 @@ impl Mem {
 
         if address < VRAM_START {
             panic!("Trying to write to Cart ROM");
-        } else if address > RAM_START && address < INTERRUPT_ENABLE_REGISTER_START {
-            self.ram[RAM_START as usize + address_usize] = data;
+        } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
+            self.ram[address_usize - INTERNAL_RAM_START as usize] = data;
         } else {
-            panic!("Trying to write invalid/unimplemented memory area");
+            panic!("Trying to write invalid/unimplemented memory area: {:#4x?}", address);
         };
     }
 }

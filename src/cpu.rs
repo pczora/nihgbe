@@ -1,10 +1,15 @@
 use super::mem;
+use std::num::Wrapping;
 
 const ZERO_FLAG: u8 = 0b10000000;
+const SUBTRACT_FLAG: u8 = 0b01000000;
+const HALFCARRY_FLAG: u8 = 0b00100000;
 const CARRY_FLAG: u8 = 0b00010000;
 
 const OPCODE_NOP: u8 = 0x0000;
-const OPCODE_JP: u8 = 0x00C3;
+const OPCODE_JP: u8 = 0x00c3;
+const OPCODE_JR_NZ: u8 = 0x0020;
+const OPCODE_DEC_B: u8 = 0x0005;
 const OPCODE_XOR_A: u8 = 0x00AF;
 const OPCODE_LD_HL: u8 = 0x0021;
 const OPCODE_LDD_HL_A: u8 = 0x0032;
@@ -26,7 +31,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn execute(&mut self, mem: &mem::Mem, num_instructions: u8) {
+    pub fn execute(&mut self, mem: &mut mem::Mem, num_instructions: u8) {
         if num_instructions == 0 {
             return;
         };
@@ -68,33 +73,35 @@ impl CPU {
             }
             OPCODE_LDD_HL_A => {
                 print!("{} \n", "LDD (HL), A");
-                // TODO: Actually write to RAM
+                mem.write(self.hl, self.a);
+                self.pc += 1
+            }
+            OPCODE_DEC_B => {
+                //TODO: Half carry flag?
+                print!("{} \n", "DEC B");
+                self.b = (Wrapping(self.b) - Wrapping(1u8)).0; // Is this considered dirty?
+                self.flags |= SUBTRACT_FLAG;
+                if self.b == 0 {self.flags |= ZERO_FLAG} else {self.flags ^= ZERO_FLAG}
+                self.pc += 1;
+            }
+            OPCODE_JR_NZ => {
+                let data = self.get_8_bit_arg(mem);
+                print!("{} {:#04x?}\n", "JR NZ,", data);
+                //TODO: Implement
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
             }
         }
         self.execute(mem, num_instructions - 1);
-    }
 
+    }
     fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
         return mem.read(self.pc + 1);
     }
 
     fn get_16_bit_arg(&self, mem: &mem::Mem) -> u16 {
         return ((mem.read(self.pc + 2) as u16) << 8) | (mem.read(self.pc + 1) as u16);
-    }
-
-    fn set_zero(&mut self) {
-        self.flags = self.flags | ZERO_FLAG;
-    }
-
-    fn unset_zero(&mut self) {
-        self.flags = self.flags ^ ZERO_FLAG;
-    }
-
-    fn set_carry(&mut self) {
-        self.flags = self.flags | CARRY_FLAG;
     }
 }
 
