@@ -1,5 +1,4 @@
 use super::mem;
-use std::num::Wrapping;
 
 const ZERO_FLAG: u8 = 0b10000000;
 const SUBTRACT_FLAG: u8 = 0b01000000;
@@ -10,13 +9,19 @@ const OPCODE_NOP: u8 = 0x0000;
 const OPCODE_JP: u8 = 0x00c3;
 const OPCODE_JR_NZ: u8 = 0x0020;
 const OPCODE_DEC_B: u8 = 0x0005;
+const OPCODE_DEC_C: u8 = 0x000d;
+const OPCODE_DEC_E: u8 = 0x001d;
+const OPCODE_DEC_H: u8 = 0x0025;
 const OPCODE_XOR_A: u8 = 0x00AF;
 const OPCODE_LD_HL: u8 = 0x0021;
 const OPCODE_LDD_HL_A: u8 = 0x0032;
 
+const OPCODE_RRA: u8 = 0x001f;
+
 // 8 bit loads
 const OPCODE_LD_B: u8 = 0x0006;
 const OPCODE_LD_C: u8 = 0x000e;
+const OPCODE_LD_E: u8 = 0x0016;
 
 pub struct CPU {
     a: u8,
@@ -35,7 +40,6 @@ impl CPU {
         if num_instructions == 0 {
             return;
         };
-        let pc_usize = self.pc as usize;
         let opcode = mem.read(self.pc);
         print!("{:#04x?}\t", self.pc);
         match opcode {
@@ -71,6 +75,12 @@ impl CPU {
                 self.c = data;
                 self.pc += 2
             }
+            OPCODE_LD_E => {
+                let data = self.get_8_bit_arg(mem);
+                print!("{} {:#04x?}\n", "LD E,", data);
+                self.e = data;
+                self.pc += 2
+            }
             OPCODE_LDD_HL_A => {
                 print!("{} \n", "LDD (HL), A");
                 mem.write(self.hl, self.a);
@@ -79,29 +89,115 @@ impl CPU {
             OPCODE_DEC_B => {
                 //TODO: Half carry flag?
                 print!("{} \n", "DEC B");
-                self.b = (Wrapping(self.b) - Wrapping(1u8)).0; // Is this considered dirty?
-                self.flags |= SUBTRACT_FLAG;
-                if self.b == 0 {self.flags |= ZERO_FLAG} else {self.flags ^= ZERO_FLAG}
+                self.b = self.b.wrapping_sub(1);
+                self.set_subtract(true);
+                if self.b == 0 {
+                    self.set_zero(true);
+                } else {
+                    self.set_zero(false);
+                }
                 self.pc += 1;
+            }
+            OPCODE_DEC_C => {
+                //TODO: Half carry flag?
+                print!("{} \n", "DEC C");
+                self.c = self.c.wrapping_sub(1);
+                self.set_subtract(true);
+                if self.c == 0 {
+                    self.set_zero(true);
+                } else {
+                    self.set_zero(false);
+                }
+                self.pc += 1;
+            }
+            OPCODE_DEC_E => {
+                //TODO: Half carry flag?
+                print!("{} \n", "DEC E");
+                self.e = self.e.wrapping_sub(1);
+                self.set_subtract(true);
+                if self.e == 0 {
+                    self.set_zero(true);
+                } else {
+                    self.set_zero(false);
+                }
+                self.pc += 1;
+            }
+            OPCODE_DEC_H => {
+                //TODO: Implement
+                //TODO: Half carry flag?
+                print!("{} \n", "DEC H");
             }
             OPCODE_JR_NZ => {
                 let data = self.get_8_bit_arg(mem);
                 print!("{} {:#04x?}\n", "JR NZ,", data);
-                //TODO: Implement
+                if self.get_zero() {
+                    self.pc += data as u16;
+                } else {
+                    self.pc += 2;
+                }
+            }
+            OPCODE_RRA => {
+                print!("{} \n", "RRA");
+                let old_carry: u8 = if self.get_carry() { 1 } else { 0 };
+
+                if (self.a & 1) == 1 {
+                    self.set_carry(true);
+                }
+                self.a = (self.a >> 1) | (old_carry << 7);
+                if self.a == 0 {
+                    self.set_zero(true);
+                }
+                self.pc += 1;
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
             }
         }
         self.execute(mem, num_instructions - 1);
-
     }
+
     fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
         return mem.read(self.pc + 1);
     }
 
     fn get_16_bit_arg(&self, mem: &mem::Mem) -> u16 {
         return ((mem.read(self.pc + 2) as u16) << 8) | (mem.read(self.pc + 1) as u16);
+    }
+
+    fn get_carry(&self) -> bool {
+        self.get_flag(CARRY_FLAG)
+    }
+
+    fn set_carry(&mut self, value: bool) {
+        self.set_flag(CARRY_FLAG, value);
+    }
+
+    fn get_subtract(&self) -> bool {
+        self.get_flag(SUBTRACT_FLAG)
+    }
+
+    fn set_subtract(&mut self, value: bool) {
+        self.set_flag(SUBTRACT_FLAG, value);
+    }
+
+    fn get_zero(&self) -> bool {
+        self.get_flag(ZERO_FLAG)
+    }
+
+    fn set_zero(&mut self, value: bool) {
+        self.set_flag(ZERO_FLAG, value);
+    }
+
+    fn get_flag(&self, flag: u8) -> bool {
+        (self.flags & flag) > 0
+    }
+
+    fn set_flag(&mut self, flag: u8, value: bool) {
+        if value == true {
+            self.flags |= flag;
+        } else {
+            self.flags ^= flag;
+        }
     }
 }
 
