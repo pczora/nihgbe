@@ -15,10 +15,14 @@ const OPCODE_DEC_H: u8 = 0x0025;
 const OPCODE_XOR_A: u8 = 0x00AF;
 const OPCODE_LD_HL: u8 = 0x0021;
 const OPCODE_LDD_HL_A: u8 = 0x0032;
+const OPCODE_LDH_A: u8 = 0x00e0;
 
 const OPCODE_RRA: u8 = 0x001f;
 
+const OPCODE_DI: u8 = 0x00f3;
+
 // 8 bit loads
+const OPCODE_LD_A: u8 = 0x003e;
 const OPCODE_LD_B: u8 = 0x0006;
 const OPCODE_LD_C: u8 = 0x000e;
 const OPCODE_LD_E: u8 = 0x0016;
@@ -36,7 +40,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn execute(&mut self, mem: &mut mem::Mem, num_instructions: u8) {
+    pub fn execute(&mut self, mem: &mut mem::Mem, num_instructions: u16) {
         if num_instructions == 0 {
             return;
         };
@@ -62,6 +66,12 @@ impl CPU {
                 print!("{} {:#04x?}\n", "LD HL,", data);
                 self.hl = data;
                 self.pc += 3;
+            }
+            OPCODE_LD_A => {
+                let data = self.get_8_bit_arg(mem);
+                print!("{} {:#04x?}\n", "LD A,", data);
+                self.b = data;
+                self.pc += 2
             }
             OPCODE_LD_B => {
                 let data = self.get_8_bit_arg(mem);
@@ -108,6 +118,7 @@ impl CPU {
                 } else {
                     self.set_zero(false);
                 }
+                println!("C: {}, Z: {}", self.c, self.get_zero());
                 self.pc += 1;
             }
             OPCODE_DEC_E => {
@@ -125,19 +136,21 @@ impl CPU {
             OPCODE_DEC_H => {
                 //TODO: Implement
                 //TODO: Half carry flag?
-                print!("{} \n", "DEC H");
+                print!("DEC H \n");
             }
             OPCODE_JR_NZ => {
-                let data = self.get_8_bit_arg(mem);
-                print!("{} {:#04x?}\n", "JR NZ,", data);
-                if self.get_zero() {
-                    self.pc += data as u16;
+                let data = self.get_8_bit_arg(mem) as i8;
+                let pc = self.pc as i16;
+                let target = pc.wrapping_add(data as i16);
+                print!("{} {:#04x?} \t Target: {:#04x?}\n", "JR NZ,", data, target);
+                if !self.get_zero() {
+                    self.pc = target as u16;
                 } else {
                     self.pc += 2;
                 }
             }
             OPCODE_RRA => {
-                print!("{} \n", "RRA");
+                print!("RRA \n");
                 let old_carry: u8 = if self.get_carry() { 1 } else { 0 };
 
                 if (self.a & 1) == 1 {
@@ -148,6 +161,17 @@ impl CPU {
                     self.set_zero(true);
                 }
                 self.pc += 1;
+            }
+            OPCODE_DI => {
+                //TODO: Implement (Disable interrupts)
+                print!("{} \n", "DI");
+                self.pc += 1;
+            }
+            OPCODE_LDH_A => {
+                let data = self.get_8_bit_arg(mem) as u16;
+                print!("LDH ({:#04x?}), A \n", 0xff00 + data);
+                mem.write(0xff00 + data, self.a);
+                self.pc += 1
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)

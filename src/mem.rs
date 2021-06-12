@@ -1,6 +1,9 @@
-const INTERNAL_RAM_START: u16 = 0xc000;
-const ECHO_INTERNAL_RAM_START: u16 = 0xe000;
 const INTERRUPT_ENABLE_REGISTER_START: u16 = 0xffff;
+const EMPTY_UNUSABLE_1_START: u16 = 0xff4c;
+const IO_REGISTERS_START: u16 = 0xff00;
+const EMPTY_UNUSABLE_0_START: u16 = 0xfea0;
+const ECHO_INTERNAL_RAM_START: u16 = 0xe000;
+const INTERNAL_RAM_START: u16 = 0xc000;
 const VRAM_START: u16 = 0x8000;
 
 pub struct Mem {
@@ -42,10 +45,15 @@ impl Mem {
 
         if address < VRAM_START {
             panic!("Trying to write to Cart ROM");
+        } else if address > IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
+            //TODO: Implement IO regs
         } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
             self.ram[address_usize - INTERNAL_RAM_START as usize] = data;
         } else {
-            panic!("Trying to write invalid/unimplemented memory area: {:#4x?}", address);
+            panic!(
+                "Trying to write invalid/unimplemented memory area: {:#4x?}",
+                address
+            );
         };
     }
 }

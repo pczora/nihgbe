@@ -16,7 +16,7 @@ fn main() {
 
     println!("{}", parse_title(&mem));
     let num_instructions =
-        u8::from_str_radix(&args[2], 10).expect("Could not parse num_instructions parameter");
+        u16::from_str_radix(&args[2], 10).expect("Could not parse num_instructions parameter");
     cpu.execute(&mut mem, num_instructions);
 }
 
@@ -25,4 +25,3 @@ fn parse_title(mem: &mem::Mem) -> String {
     let title_string = String::from_utf8(title_vec);
     return title_string.expect("Could not parse title");
 }
-
