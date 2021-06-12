@@ -1,4 +1,5 @@
 const INTERRUPT_ENABLE_REGISTER_START: u16 = 0xffff;
+const HIGH_RAM_AREA_START: u16 = 0xff80;
 const EMPTY_UNUSABLE_1_START: u16 = 0xff4c;
 const IO_REGISTERS_START: u16 = 0xff00;
 const EMPTY_UNUSABLE_0_START: u16 = 0xfea0;
@@ -43,12 +44,16 @@ impl Mem {
     pub fn write(&mut self, address: u16, data: u8) {
         let address_usize = address as usize;
 
-        if address < VRAM_START {
+        if address <= VRAM_START {
             panic!("Trying to write to Cart ROM");
-        } else if address > IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
+        } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
             //TODO: Implement IO regs
-        } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
+        } else if address >= INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
             self.ram[address_usize - INTERNAL_RAM_START as usize] = data;
+        } else if address >= HIGH_RAM_AREA_START && address < INTERRUPT_ENABLE_REGISTER_START {
+            //TODO: Implement high RAM area
+        } else if address == INTERRUPT_ENABLE_REGISTER_START {
+            //TODO: Implement Interrupt Enable reg
         } else {
             panic!(
                 "Trying to write invalid/unimplemented memory area: {:#4x?}",
