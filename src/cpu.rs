@@ -171,7 +171,7 @@ impl CPU {
                 let data = self.get_8_bit_arg(mem) as u16;
                 print!("LDH ({:#04x?}), A \n", 0xff00 + data);
                 mem.write(0xff00 + data, self.a);
-                self.pc += 1
+                self.pc += 2
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
