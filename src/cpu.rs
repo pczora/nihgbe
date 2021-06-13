@@ -52,28 +52,28 @@ impl CPU {
         print!("{:#04x?}\t{}\t", self.pc, num_instructions);
         match opcode {
             OPCODE_NOP => {
-                print!("{}\n", "NOP");
+                print!("NOP\n");
                 self.pc += 1;
             }
             OPCODE_JP => {
                 let jp_dest = self.get_16_bit_arg(mem);
-                print!("{} {:#04x?}\n", "JP", jp_dest);
+                print!("JP {:#04x?}\n", jp_dest);
                 self.pc = jp_dest;
             }
             OPCODE_XOR_A => {
-                print!("{}\n", "XOR A");
+                print!("XOR A\n");
                 self.a ^= self.a;
                 self.pc += 1;
             }
             OPCODE_LD_HL => {
                 let data = self.get_16_bit_arg(mem);
-                print!("{} {:#04x?}\n", "LD HL,", data);
+                print!("LD HL, {:#04x?}\n", data);
                 self.hl = data;
                 self.pc += 3;
             }
             OPCODE_LD_A_D => {
                 let data = self.get_8_bit_arg(mem);
-                print!("{} {:#04x?}\n", "LD A,", data);
+                print!("LD A, {:#04x?}\n", data);
                 self.b = data;
                 self.pc += 2
             }
@@ -85,13 +85,13 @@ impl CPU {
             }
             OPCODE_LD_C_D => {
                 let data = self.get_8_bit_arg(mem);
-                print!("{} {:#04x?}\n", "LD C,", data);
+                print!("LD C, {:#04x?}\n", data);
                 self.c = data;
                 self.pc += 2
             }
             OPCODE_LD_E_D => {
                 let data = self.get_8_bit_arg(mem);
-                print!("{} {:#04x?}\n", "LD E,", data);
+                print!("LD E, {:#04x?}\n", data);
                 self.e = data;
                 self.pc += 2
             }
@@ -102,22 +102,22 @@ impl CPU {
                 self.pc += 2
             }
             OPCODE_LDD_HL_A => {
-                print!("{} \n", "LDD (HL), A");
+                print!("LDD (HL), A \n");
                 mem.write(self.hl, self.a);
                 self.pc += 1
             }
             OPCODE_DEC_B => {
-                print!("{} \n", "DEC B");
+                print!("DEC B \n");
                 self.b = self.dec_register(self.b);
                 self.pc += 1;
             }
             OPCODE_DEC_C => {
-                print!("{} \n", "DEC C");
+                print!("DEC C \n");
                 self.c = self.dec_register(self.c);
                 self.pc += 1;
             }
             OPCODE_DEC_E => {
-                print!("{} \n", "DEC E");
+                print!("DEC E \n");
                 self.e = self.dec_register(self.e);
                 self.pc += 1;
             }
@@ -131,7 +131,7 @@ impl CPU {
                 let data = self.get_8_bit_arg(mem) as i8;
                 let pc = self.pc as i16;
                 let target = pc.wrapping_add(data as i16);
-                print!("{} {:#04x?} \t Target: {:#04x?}\n", "JR NZ,", data, target);
+                print!("JR NZ {:#04x?} \t Target: {:#04x?}\n", data, target);
                 if !self.get_zero() {
                     self.pc = target as u16;
                 } else {
@@ -153,7 +153,7 @@ impl CPU {
             }
             OPCODE_DI => {
                 //TODO: Implement (Disable interrupts)
-                print!("{} \n", "DI");
+                print!("DI \n");
                 self.pc += 1;
             }
             OPCODE_LDH_ADDR_A => {
