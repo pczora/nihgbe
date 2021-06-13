@@ -22,10 +22,10 @@ const OPCODE_RRA: u8 = 0x001f;
 const OPCODE_DI: u8 = 0x00f3;
 
 // 8 bit loads
-const OPCODE_LD_A_D: u8 = 0x003e;
-const OPCODE_LD_B_D: u8 = 0x0006;
-const OPCODE_LD_C_D: u8 = 0x000e;
-const OPCODE_LD_E_D: u8 = 0x0016;
+const OPCODE_LD_A_IMMEDIATE: u8 = 0x003e;
+const OPCODE_LD_B_IMMEDIATE: u8 = 0x0006;
+const OPCODE_LD_C_IMMEDIATE: u8 = 0x000e;
+const OPCODE_LD_E_IMMEDIATE: u8 = 0x0016;
 
 const OPCODE_LDH_A_ADDR: u8 = 0x00f0;
 
@@ -41,6 +41,18 @@ pub struct CPU {
     hl: u16,
     sp: u16,
     pc: u16,
+}
+
+enum Register {
+    A,
+    Flags,
+    B,
+    C,
+    D,
+    E,
+    HL,
+    SP,
+    PC,
 }
 
 impl CPU {
@@ -71,29 +83,21 @@ impl CPU {
                 self.hl = data;
                 self.pc += 3;
             }
-            OPCODE_LD_A_D => {
-                let data = self.get_8_bit_arg(mem);
-                print!("LD A, {:#04x?}\n", data);
-                self.b = data;
-                self.pc += 2
+            OPCODE_LD_A_IMMEDIATE => {
+                print!("LD A, ");
+                self.ld_8_bit_immediate(mem, Register::A);
             }
-            OPCODE_LD_B_D => {
-                let data = self.get_8_bit_arg(mem);
-                print!("{} {:#04x?}\n", "LD B,", data);
-                self.b = data;
-                self.pc += 2
+            OPCODE_LD_B_IMMEDIATE => {
+                print!("LD B, ");
+                self.ld_8_bit_immediate(mem, Register::B);
             }
-            OPCODE_LD_C_D => {
-                let data = self.get_8_bit_arg(mem);
-                print!("LD C, {:#04x?}\n", data);
-                self.c = data;
-                self.pc += 2
+            OPCODE_LD_C_IMMEDIATE => {
+                print!("LD C, ");
+                self.ld_8_bit_immediate(mem, Register::C);
             }
-            OPCODE_LD_E_D => {
-                let data = self.get_8_bit_arg(mem);
-                print!("LD E, {:#04x?}\n", data);
-                self.e = data;
-                self.pc += 2
+            OPCODE_LD_E_IMMEDIATE => {
+                print!("LD E, ");
+                self.ld_8_bit_immediate(mem, Register::E);
             }
             OPCODE_LDH_A_ADDR => {
                 let data = self.get_8_bit_arg(mem) as u16;
@@ -108,18 +112,15 @@ impl CPU {
             }
             OPCODE_DEC_B => {
                 print!("DEC B \n");
-                self.b = self.dec_register(self.b);
-                self.pc += 1;
+                self.dec(Register::B);
             }
             OPCODE_DEC_C => {
                 print!("DEC C \n");
-                self.c = self.dec_register(self.c);
-                self.pc += 1;
+                self.dec(Register::C);
             }
             OPCODE_DEC_E => {
                 print!("DEC E \n");
-                self.e = self.dec_register(self.e);
-                self.pc += 1;
+                self.dec(Register::E);
             }
             OPCODE_DEC_H => {
                 //TODO: Implement
@@ -163,11 +164,7 @@ impl CPU {
                 self.pc += 2
             }
             OPCODE_CP_A_D => {
-                //TODO: Set half carry
-                let data = self.get_8_bit_arg(mem);
-                print!("CP {} \n", data);
-                self.compare(self.a, data);
-                self.pc += 2;
+                self.cp_immediate(mem);
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
@@ -176,8 +173,48 @@ impl CPU {
         self.execute(mem, num_instructions - 1);
     }
 
+    /// Loads an 8 bit immediate value to a register
+    ///
+    /// Mnemonic: ld r, n
+    fn ld_8_bit_immediate(&mut self, mem: &mem::Mem, reg: Register) {
+        let data = self.get_8_bit_arg(mem);
+        print!("{:#04x?}\n", data);
+        match reg {
+            Register::A => {
+                self.a = data;
+            }
+            Register::B => {
+                self.b = data;
+            }
+            Register::C => {
+                self.c = data;
+            }
+            Register::D => {
+                self.d = data;
+            }
+            Register::E => {
+                self.e = data;
+            }
+            _ => {
+                panic!("Register does not support 8 bit loads");
+            }
+        }
+        self.pc += 2;
+    }
+
+    /// Compares immediate value with reg A and sets flags accordingly
+    ///
+    /// Mnemonic: cp n
+    fn cp_immediate(&mut self, mem: &mem::Mem) {
+        let data = self.get_8_bit_arg(mem);
+        print!("CP {:#04x?}\n", data);
+        self.compare(self.a, data);
+        self.pc += 2;
+    }
+
     /// Compares two values and sets flags accordingly
     fn compare(&mut self, a: u8, b: u8) {
+        //TODO: Set half carry
         self.set_subtract(true);
         if (a as i8 - b as i8) == 0 {
             self.set_zero(true);
@@ -191,16 +228,35 @@ impl CPU {
     }
 
     /// Decrements a given register value and sets the flags appropriately
-    fn dec_register(&mut self, value: u8) -> u8 {
+    fn dec(&mut self, reg: Register) {
         //TODO: Half carry flag?
-        let new_reg = value.wrapping_sub(1);
-        self.set_subtract(true);
-        if new_reg == 0 {
-            self.set_zero(true);
-        } else {
-            self.set_zero(false);
+        match reg {
+            Register::A => {
+                self.a = self.a.wrapping_sub(1);
+                self.set_zero(self.a == 0);
+            }
+            Register::B => {
+                self.b = self.b.wrapping_sub(1);
+                self.set_zero(self.b == 0);
+            }
+            Register::C => {
+                self.c = self.c.wrapping_sub(1);
+                self.set_zero(self.c == 0);
+            }
+            Register::D => {
+                self.d = self.d.wrapping_sub(1);
+                self.set_zero(self.d == 0);
+            }
+            Register::E => {
+                self.d = self.e.wrapping_sub(1);
+                self.set_zero(self.e == 0);
+            }
+            _ => {
+                panic!("Register does not support 8 bit loads");
+            }
         }
-        return new_reg;
+        self.set_subtract(true);
+        self.pc += 1;
     }
 
     fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
