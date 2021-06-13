@@ -109,14 +109,17 @@ impl CPU {
             OPCODE_DEC_B => {
                 print!("{} \n", "DEC B");
                 self.b = self.dec_register(self.b);
+                self.pc += 1;
             }
             OPCODE_DEC_C => {
                 print!("{} \n", "DEC C");
                 self.c = self.dec_register(self.c);
+                self.pc += 1;
             }
             OPCODE_DEC_E => {
                 print!("{} \n", "DEC E");
                 self.e = self.dec_register(self.e);
+                self.pc += 1;
             }
             OPCODE_DEC_H => {
                 //TODO: Implement
@@ -163,17 +166,7 @@ impl CPU {
                 //TODO: Set half carry
                 let data = self.get_8_bit_arg(mem);
                 print!("CP {} \n", data);
-                self.set_subtract(true);
-                if (self.a as i8 - data as i8) == 0 {
-                    self.set_zero(true);
-                } else if (self.a as i8 - data as i8) < 0 {
-                    self.set_carry(true);
-                    self.set_zero(false);
-                } else {
-                    self.set_carry(false);
-                    self.set_zero(false);
-                }
-
+                self.compare(self.a, data);
                 self.pc += 2;
             }
             _ => {
@@ -181,6 +174,20 @@ impl CPU {
             }
         }
         self.execute(mem, num_instructions - 1);
+    }
+
+    /// Compares two values and sets flags accordingly
+    fn compare(&mut self, a: u8, b: u8) {
+        self.set_subtract(true);
+        if (a as i8 - b as i8) == 0 {
+            self.set_zero(true);
+        } else if (a as i8 - b as i8) < 0 {
+            self.set_carry(true);
+            self.set_zero(false);
+        } else {
+            self.set_carry(false);
+            self.set_zero(false);
+        }
     }
 
     /// Decrements a given register value and sets the flags appropriately
@@ -193,7 +200,6 @@ impl CPU {
         } else {
             self.set_zero(false);
         }
-        self.pc += 1;
         return new_reg;
     }
 
