@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_set_zero() {
         let mut cpu = init_cpu();
-        cpu.set_zero();
+        cpu.set_zero(true);
         assert!(cpu.flags & ZERO_FLAG == 128)
     }
 
@@ -342,7 +342,7 @@ mod tests {
             sp: 0,
             pc: 0,
         };
-        cpu.unset_zero();
+        cpu.set_zero(false);
         assert!(cpu.flags & ZERO_FLAG == 0)
     }
 }
