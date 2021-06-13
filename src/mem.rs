@@ -9,14 +9,23 @@ const VRAM_START: u16 = 0x8000;
 
 pub struct Mem {
     cart: Vec<u8>,
+    interrupt_enable_register: Vec<u8>,
     ram: Vec<u8>,
+    io_regs: Vec<u8>,
+    high_ram_area: Vec<u8>,
 }
 
 pub fn init_mem(cart: Vec<u8>) -> Mem {
-    let ram_size: usize = INTERRUPT_ENABLE_REGISTER_START as usize - INTERNAL_RAM_START as usize;
+    let ram_size = (INTERRUPT_ENABLE_REGISTER_START - INTERNAL_RAM_START) as usize;
+    let io_regs_size = (EMPTY_UNUSABLE_1_START - IO_REGISTERS_START) as usize;
+    let high_ram_area_size = (INTERRUPT_ENABLE_REGISTER_START - HIGH_RAM_AREA_START) as usize;
+    let interrupt_enable_register_size = 1 as usize;
     Mem {
         cart,
+        interrupt_enable_register: vec![0; interrupt_enable_register_size],
         ram: vec![0; ram_size],
+        io_regs: vec![0; io_regs_size],
+        high_ram_area: vec![0; high_ram_area_size],
     }
 }
 
@@ -34,8 +43,15 @@ impl Mem {
 
         if address < VRAM_START {
             return self.cart[address_usize];
+        } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
+            return self.io_regs[address_usize - IO_REGISTERS_START as usize];
         } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
-            return self.ram[INTERNAL_RAM_START as usize + address_usize];
+            return self.ram[address_usize - INTERNAL_RAM_START as usize];
+        } else if address >= HIGH_RAM_AREA_START && address < INTERRUPT_ENABLE_REGISTER_START {
+            return self.high_ram_area[address_usize - HIGH_RAM_AREA_START as usize];
+        } else if address == INTERRUPT_ENABLE_REGISTER_START {
+            return self.interrupt_enable_register
+                [address_usize - INTERRUPT_ENABLE_REGISTER_START as usize];
         } else {
             panic!("Trying to read invalid/unimplemented memory area");
         };
@@ -47,13 +63,14 @@ impl Mem {
         if address <= VRAM_START {
             panic!("Trying to write to Cart ROM");
         } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
-            //TODO: Implement IO regs
+            self.io_regs[address_usize - IO_REGISTERS_START as usize] = data;
         } else if address >= INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
             self.ram[address_usize - INTERNAL_RAM_START as usize] = data;
         } else if address >= HIGH_RAM_AREA_START && address < INTERRUPT_ENABLE_REGISTER_START {
-            //TODO: Implement high RAM area
+            self.high_ram_area[address_usize - HIGH_RAM_AREA_START as usize] = data;
         } else if address == INTERRUPT_ENABLE_REGISTER_START {
-            //TODO: Implement Interrupt Enable reg
+            self.interrupt_enable_register
+                [address_usize - INTERRUPT_ENABLE_REGISTER_START as usize] = data;
         } else {
             panic!(
                 "Trying to write invalid/unimplemented memory area: {:#4x?}",

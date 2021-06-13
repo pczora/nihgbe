@@ -15,17 +15,21 @@ const OPCODE_DEC_H: u8 = 0x0025;
 const OPCODE_XOR_A: u8 = 0x00AF;
 const OPCODE_LD_HL: u8 = 0x0021;
 const OPCODE_LDD_HL_A: u8 = 0x0032;
-const OPCODE_LDH_A: u8 = 0x00e0;
+const OPCODE_LDH_ADDR_A: u8 = 0x00e0;
 
 const OPCODE_RRA: u8 = 0x001f;
 
 const OPCODE_DI: u8 = 0x00f3;
 
 // 8 bit loads
-const OPCODE_LD_A: u8 = 0x003e;
-const OPCODE_LD_B: u8 = 0x0006;
-const OPCODE_LD_C: u8 = 0x000e;
-const OPCODE_LD_E: u8 = 0x0016;
+const OPCODE_LD_A_D: u8 = 0x003e;
+const OPCODE_LD_B_D: u8 = 0x0006;
+const OPCODE_LD_C_D: u8 = 0x000e;
+const OPCODE_LD_E_D: u8 = 0x0016;
+
+const OPCODE_LDH_A_ADDR: u8 = 0x00f0;
+
+const OPCODE_CP_A_D: u8 = 0x00fe;
 
 pub struct CPU {
     a: u8,
@@ -45,7 +49,7 @@ impl CPU {
             return;
         };
         let opcode = mem.read(self.pc);
-        print!("{:#04x?}\t", self.pc);
+        print!("{:#04x?}\t{}\t", self.pc, num_instructions);
         match opcode {
             OPCODE_NOP => {
                 print!("{}\n", "NOP");
@@ -67,28 +71,34 @@ impl CPU {
                 self.hl = data;
                 self.pc += 3;
             }
-            OPCODE_LD_A => {
+            OPCODE_LD_A_D => {
                 let data = self.get_8_bit_arg(mem);
                 print!("{} {:#04x?}\n", "LD A,", data);
                 self.b = data;
                 self.pc += 2
             }
-            OPCODE_LD_B => {
+            OPCODE_LD_B_D => {
                 let data = self.get_8_bit_arg(mem);
                 print!("{} {:#04x?}\n", "LD B,", data);
                 self.b = data;
                 self.pc += 2
             }
-            OPCODE_LD_C => {
+            OPCODE_LD_C_D => {
                 let data = self.get_8_bit_arg(mem);
                 print!("{} {:#04x?}\n", "LD C,", data);
                 self.c = data;
                 self.pc += 2
             }
-            OPCODE_LD_E => {
+            OPCODE_LD_E_D => {
                 let data = self.get_8_bit_arg(mem);
                 print!("{} {:#04x?}\n", "LD E,", data);
                 self.e = data;
+                self.pc += 2
+            }
+            OPCODE_LDH_A_ADDR => {
+                let data = self.get_8_bit_arg(mem) as u16;
+                print!("LD A, ({:#04x?})\n", 0xff00 + data);
+                self.a = mem.read(0xff00 + data);
                 self.pc += 2
             }
             OPCODE_LDD_HL_A => {
@@ -97,46 +107,22 @@ impl CPU {
                 self.pc += 1
             }
             OPCODE_DEC_B => {
-                //TODO: Half carry flag?
                 print!("{} \n", "DEC B");
-                self.b = self.b.wrapping_sub(1);
-                self.set_subtract(true);
-                if self.b == 0 {
-                    self.set_zero(true);
-                } else {
-                    self.set_zero(false);
-                }
-                self.pc += 1;
+                self.b = self.dec_register(self.b);
             }
             OPCODE_DEC_C => {
-                //TODO: Half carry flag?
                 print!("{} \n", "DEC C");
-                self.c = self.c.wrapping_sub(1);
-                self.set_subtract(true);
-                if self.c == 0 {
-                    self.set_zero(true);
-                } else {
-                    self.set_zero(false);
-                }
-                println!("C: {}, Z: {}", self.c, self.get_zero());
-                self.pc += 1;
+                self.c = self.dec_register(self.c);
             }
             OPCODE_DEC_E => {
-                //TODO: Half carry flag?
                 print!("{} \n", "DEC E");
-                self.e = self.e.wrapping_sub(1);
-                self.set_subtract(true);
-                if self.e == 0 {
-                    self.set_zero(true);
-                } else {
-                    self.set_zero(false);
-                }
-                self.pc += 1;
+                self.e = self.dec_register(self.e);
             }
             OPCODE_DEC_H => {
                 //TODO: Implement
                 //TODO: Half carry flag?
                 print!("DEC H \n");
+                unimplemented!();
             }
             OPCODE_JR_NZ => {
                 let data = self.get_8_bit_arg(mem) as i8;
@@ -167,17 +153,48 @@ impl CPU {
                 print!("{} \n", "DI");
                 self.pc += 1;
             }
-            OPCODE_LDH_A => {
+            OPCODE_LDH_ADDR_A => {
                 let data = self.get_8_bit_arg(mem) as u16;
                 print!("LDH ({:#04x?}), A \n", 0xff00 + data);
                 mem.write(0xff00 + data, self.a);
                 self.pc += 2
+            }
+            OPCODE_CP_A_D => {
+                //TODO: Set half carry
+                let data = self.get_8_bit_arg(mem);
+                print!("CP {} \n", data);
+                self.set_subtract(true);
+                if (self.a as i8 - data as i8) == 0 {
+                    self.set_zero(true);
+                } else if (self.a as i8 - data as i8) < 0 {
+                    self.set_carry(true);
+                    self.set_zero(false);
+                } else {
+                    self.set_carry(false);
+                    self.set_zero(false);
+                }
+
+                self.pc += 2;
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
             }
         }
         self.execute(mem, num_instructions - 1);
+    }
+
+    /// Decrements a given register value and sets the flags appropriately
+    fn dec_register(&mut self, value: u8) -> u8 {
+        //TODO: Half carry flag?
+        let new_reg = value.wrapping_sub(1);
+        self.set_subtract(true);
+        if new_reg == 0 {
+            self.set_zero(true);
+        } else {
+            self.set_zero(false);
+        }
+        self.pc += 1;
+        return new_reg;
     }
 
     fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
