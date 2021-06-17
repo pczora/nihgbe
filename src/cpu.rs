@@ -30,9 +30,14 @@ const OPCODE_LD_E_IMMEDIATE: u8 = 0x16;
 
 const OPCODE_LD_ADDRESS_A: u8 = 0xea;
 
+// 16 bit loads
+const OPCODE_LD_SP_IMMEDIATE: u8 = 0x31;
+
 const OPCODE_LDH_A_ADDR: u8 = 0xf0;
 
 const OPCODE_CP_A_D: u8 = 0xfe;
+
+const OPCODE_PREFIX: u8 = 0xcb;
 
 pub struct CPU {
     a: u8,
@@ -66,6 +71,20 @@ impl CPU {
         let opcode = mem.read(self.pc);
         print!("{:#04x?}\t{}\t", self.pc, num_instructions);
         match opcode {
+            OPCODE_LD_SP_IMMEDIATE => {
+                let data = self.get_16_bit_arg(mem);
+                print!("LD SP, {:#04x?}\n", data);
+                self.sp = data;
+                self.pc += 3;
+            }
+            OPCODE_PREFIX => {
+                // TODO: Implement! Careful, getting the next byte and
+                // running the instruction cannot be interrupted
+                let data = self.get_8_bit_arg(mem);
+                print!("PREFIX {:#04x?}\n", data);
+                self.pc += 2;
+                unimplemented!();
+            }
             OPCODE_NOP => {
                 print!("NOP\n");
                 self.pc += 1;
@@ -330,7 +349,7 @@ pub fn init_cpu() -> CPU {
         e: 0,
         hl: 0,
         sp: 0xFFFE,
-        pc: 0x0100,
+        pc: 0x0000,
     }
 }
 

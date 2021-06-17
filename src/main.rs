@@ -9,14 +9,15 @@ const TITLE_END: u16 = 0x0143;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let cart = fs::read(&args[1]).expect("Could not read file");
+    let boot_rom = fs::read(&args[1]).expect("Could not read boot ROM  file");
+    let cart = fs::read(&args[2]).expect("Could not read cartridge file");
 
     let mut cpu = cpu::init_cpu();
-    let mut mem = mem::init_mem(cart);
+    let mut mem = mem::init_mem(boot_rom, cart);
 
     println!("{}", parse_title(&mem));
     let num_instructions =
-        u16::from_str_radix(&args[2], 10).expect("Could not parse num_instructions parameter");
+        u16::from_str_radix(&args[3], 10).expect("Could not parse num_instructions parameter");
     cpu.execute(&mut mem, num_instructions);
 }
 
