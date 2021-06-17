@@ -131,7 +131,8 @@ impl CPU {
             OPCODE_JR_NZ => {
                 let data = self.get_8_bit_arg(mem) as i8;
                 let pc = self.pc as i16;
-                let target = pc.wrapping_add(data as i16);
+                // Jump relative to the byte _after_ JR
+                let target = pc.wrapping_add(data as i16 + 2);
                 print!("JR NZ {:#04x?} \t Target: {:#04x?}\n", data, target);
                 if !self.get_zero() {
                     self.pc = target as u16;
