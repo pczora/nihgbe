@@ -5,34 +5,34 @@ const SUBTRACT_FLAG: u8 = 0b01000000;
 const HALFCARRY_FLAG: u8 = 0b00100000;
 const CARRY_FLAG: u8 = 0b00010000;
 
-const OPCODE_NOP: u8 = 0x0000;
-const OPCODE_JP: u8 = 0x00c3;
-const OPCODE_JR_NZ: u8 = 0x0020;
-const OPCODE_DEC_B: u8 = 0x0005;
-const OPCODE_DEC_C: u8 = 0x000d;
-const OPCODE_DEC_E: u8 = 0x001d;
-const OPCODE_DEC_H: u8 = 0x0025;
-const OPCODE_XOR_A: u8 = 0x00AF;
-const OPCODE_LD_HL: u8 = 0x0021;
-const OPCODE_LDD_HL_A: u8 = 0x0032;
-const OPCODE_LDH_ADDR_A: u8 = 0x00e0;
-const OPCODE_LD_ADDR_HL_IMMEDIATE: u8 = 0x0036;
+const OPCODE_NOP: u8 = 0x00;
+const OPCODE_JP: u8 = 0xc3;
+const OPCODE_JR_NZ: u8 = 0x20;
+const OPCODE_DEC_B: u8 = 0x05;
+const OPCODE_DEC_C: u8 = 0x0d;
+const OPCODE_DEC_E: u8 = 0x1d;
+const OPCODE_DEC_H: u8 = 0x25;
+const OPCODE_XOR_A: u8 = 0xAF;
+const OPCODE_LD_HL: u8 = 0x21;
+const OPCODE_LDD_HL_A: u8 = 0x32;
+const OPCODE_LDH_ADDR_A: u8 = 0xe0;
+const OPCODE_LD_ADDR_HL_IMMEDIATE: u8 = 0x36;
 
-const OPCODE_RRA: u8 = 0x001f;
+const OPCODE_RRA: u8 = 0x1f;
 
-const OPCODE_DI: u8 = 0x00f3;
+const OPCODE_DI: u8 = 0xf3;
 
 // 8 bit loads
-const OPCODE_LD_A_IMMEDIATE: u8 = 0x003e;
-const OPCODE_LD_B_IMMEDIATE: u8 = 0x0006;
-const OPCODE_LD_C_IMMEDIATE: u8 = 0x000e;
-const OPCODE_LD_E_IMMEDIATE: u8 = 0x0016;
+const OPCODE_LD_A_IMMEDIATE: u8 = 0x3e;
+const OPCODE_LD_B_IMMEDIATE: u8 = 0x06;
+const OPCODE_LD_C_IMMEDIATE: u8 = 0x0e;
+const OPCODE_LD_E_IMMEDIATE: u8 = 0x16;
 
-const OPCODE_LD_ADDRESS_A: u8 = 0x00ea;
+const OPCODE_LD_ADDRESS_A: u8 = 0xea;
 
-const OPCODE_LDH_A_ADDR: u8 = 0x00f0;
+const OPCODE_LDH_A_ADDR: u8 = 0xf0;
 
-const OPCODE_CP_A_D: u8 = 0x00fe;
+const OPCODE_CP_A_D: u8 = 0xfe;
 
 pub struct CPU {
     a: u8,
