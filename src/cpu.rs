@@ -16,6 +16,7 @@ const OPCODE_XOR_A: u8 = 0x00AF;
 const OPCODE_LD_HL: u8 = 0x0021;
 const OPCODE_LDD_HL_A: u8 = 0x0032;
 const OPCODE_LDH_ADDR_A: u8 = 0x00e0;
+const OPCODE_LD_ADDR_HL_IMMEDIATE: u8 = 0x0036;
 
 const OPCODE_RRA: u8 = 0x001f;
 
@@ -26,6 +27,8 @@ const OPCODE_LD_A_IMMEDIATE: u8 = 0x003e;
 const OPCODE_LD_B_IMMEDIATE: u8 = 0x0006;
 const OPCODE_LD_C_IMMEDIATE: u8 = 0x000e;
 const OPCODE_LD_E_IMMEDIATE: u8 = 0x0016;
+
+const OPCODE_LD_ADDRESS_A: u8 = 0x00ea;
 
 const OPCODE_LDH_A_ADDR: u8 = 0x00f0;
 
@@ -166,6 +169,18 @@ impl CPU {
             }
             OPCODE_CP_A_D => {
                 self.cp_immediate(mem);
+            }
+            OPCODE_LD_ADDR_HL_IMMEDIATE => {
+                let data = self.get_8_bit_arg(mem);
+                print!("LD (HL), {:#04x?} \n", data);
+                mem.write(self.hl, data);
+                self.pc += 2
+            }
+            OPCODE_LD_ADDRESS_A => {
+                let data = self.get_16_bit_arg(mem);
+                print!("LD ({:#04x?}), A\n", data);
+                mem.write(data, self.a);
+                self.pc += 3
             }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
