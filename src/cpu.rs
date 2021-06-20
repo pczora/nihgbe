@@ -6,12 +6,11 @@ const HALFCARRY_FLAG: u8 = 0b00100000;
 const CARRY_FLAG: u8 = 0b00010000;
 
 const OPCODE_NOP: u8 = 0x00;
-const OPCODE_JP: u8 = 0xc3;
-const OPCODE_JR_NZ: u8 = 0x20;
 const OPCODE_DEC_B: u8 = 0x05;
 const OPCODE_DEC_C: u8 = 0x0d;
 const OPCODE_DEC_E: u8 = 0x1d;
 const OPCODE_DEC_H: u8 = 0x25;
+const OPCODE_INC_C: u8 = 0x0c;
 const OPCODE_XOR_A: u8 = 0xAF;
 const OPCODE_LD_HL: u8 = 0x21;
 const OPCODE_LDD_HL_A: u8 = 0x32;
@@ -22,16 +21,27 @@ const OPCODE_RRA: u8 = 0x1f;
 
 const OPCODE_DI: u8 = 0xf3;
 
+// Jumps & Calls
+const OPCODE_JP: u8 = 0xc3;
+const OPCODE_JR_NZ: u8 = 0x20;
+const OPCODE_CALL: u8 = 0xcd;
+
 // 8 bit loads
 const OPCODE_LD_A_IMMEDIATE: u8 = 0x3e;
 const OPCODE_LD_B_IMMEDIATE: u8 = 0x06;
 const OPCODE_LD_C_IMMEDIATE: u8 = 0x0e;
 const OPCODE_LD_E_IMMEDIATE: u8 = 0x16;
+const OPCODE_LD_A_ADDR_DE: u8 = 0x1a;
+const OPCODE_LD_ADDR_C_A: u8 = 0xe2;
+const OPCODE_LD_ADDR_HL_A: u8 = 0x77;
+const OPCODE_LD_C_A: u8 = 0x4f;
 
 const OPCODE_LD_ADDRESS_A: u8 = 0xea;
 
 // 16 bit loads
 const OPCODE_LD_SP_IMMEDIATE: u8 = 0x31;
+const OPCODE_LD_DE_IMMEDIATE: u8 = 0x11;
+const OPCODE_PUSH_BC: u8 = 0xc5;
 
 const OPCODE_LDH_A_ADDR: u8 = 0xf0;
 
@@ -77,13 +87,29 @@ impl CPU {
                 self.sp = data;
                 self.pc += 3;
             }
+            OPCODE_LD_DE_IMMEDIATE => {
+                let data = self.get_16_bit_arg(mem);
+                print!("LD DE, {:#04x?}\n", data);
+                self.d = (data >> 8) as u8;
+                self.e = (data & 0x00ff) as u8;
+                self.pc += 3;
+            }
             OPCODE_PREFIX => {
                 // TODO: Implement! Careful, getting the next byte and
                 // running the instruction cannot be interrupted
                 let data = self.get_8_bit_arg(mem);
                 print!("PREFIX {:#04x?}\n", data);
+                match data {
+                    // BIT 7, h
+                    0x7c => {
+                        let bit_set = ((1 << 15) & self.hl) == 1;
+                        self.set_zero(!bit_set);
+                    }
+                    _ => {
+                        panic!("Invalid 16 byte opcode")
+                    }
+                }
                 self.pc += 2;
-                unimplemented!();
             }
             OPCODE_NOP => {
                 print!("NOP\n");
@@ -201,6 +227,42 @@ impl CPU {
                 mem.write(data, self.a);
                 self.pc += 3
             }
+            OPCODE_LD_ADDR_C_A => {
+                print!("LD (C), A\n");
+                mem.write(self.c as u16 + 0xff00, self.a);
+                self.pc += 1
+            }
+            OPCODE_INC_C => {
+                print!("INC C\n");
+                self.inc(Register::C);
+            }
+            OPCODE_LD_ADDR_HL_A => {
+                print!("LD (HL), A\n");
+                mem.write(self.hl, self.a);
+                self.pc += 1;
+            }
+            OPCODE_LD_A_ADDR_DE => {
+                print!("LD A, (DE)\n");
+                let de = ((self.d as u16) << 8) | self.e as u16;
+                self.a = mem.read(de);
+                self.pc += 1;
+            }
+            OPCODE_CALL => {
+                let data = self.get_16_bit_arg(mem);
+                print!("CALL {:#04x?}\n", data);
+                self.push(mem, self.pc + 3);
+                self.pc = data;
+            }
+            OPCODE_LD_C_A => {
+                print!("LD C, A\n");
+                self.c = self.a;
+                self.pc += 1;
+            }
+            OPCODE_PUSH_BC => {
+                print!("PUSH BC\n");
+                self.push_two_bytes(mem, self.b, self.c);
+                self.pc += 1;
+            }
             _ => {
                 panic!("Invalid or unimplemented op code {:#04x?}", opcode)
             }
@@ -292,6 +354,53 @@ impl CPU {
         }
         self.set_subtract(true);
         self.pc += 1;
+    }
+
+    fn inc(&mut self, reg: Register) {
+        //TODO: Half carry flag?
+        match reg {
+            Register::A => {
+                self.a = self.a.wrapping_add(1);
+                self.set_zero(self.a == 0);
+            }
+            Register::B => {
+                self.b = self.b.wrapping_add(1);
+                self.set_zero(self.b == 0);
+            }
+            Register::C => {
+                self.c = self.c.wrapping_add(1);
+                self.set_zero(self.c == 0);
+            }
+            Register::D => {
+                self.d = self.d.wrapping_add(1);
+                self.set_zero(self.d == 0);
+            }
+            Register::E => {
+                self.d = self.e.wrapping_add(1);
+                self.set_zero(self.e == 0);
+            }
+            _ => {
+                panic!("Register does not support 8 bit loads");
+            }
+        }
+        self.set_subtract(false);
+        self.pc += 1;
+    }
+
+    fn push_two_bytes(&mut self, mem: &mut mem::Mem, byte1: u8, byte2: u8) {
+        mem.write(self.sp, byte1);
+        mem.write(self.sp - 1, byte2);
+        self.sp -= 2;
+    }
+    fn push(&mut self, mem: &mut mem::Mem, value: u16) {
+        let (high_byte, low_byte) = self.byte_split(value);
+        self.push_two_bytes(mem, high_byte, low_byte);
+    }
+
+    fn byte_split(&self, value: u16) -> (u8, u8) {
+        let high_byte = ((value as u16) >> 8) as u8;
+        let low_byte = (value & 0x00ff) as u8;
+        (high_byte, low_byte)
     }
 
     fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
