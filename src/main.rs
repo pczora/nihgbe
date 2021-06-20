@@ -17,8 +17,15 @@ fn main() {
 
     println!("{}", parse_title(&mem));
     let num_instructions =
-        u16::from_str_radix(&args[3], 10).expect("Could not parse num_instructions parameter");
-    cpu.execute(&mut mem, num_instructions);
+        u32::from_str_radix(&args[3], 10).expect("Could not parse num_instructions parameter");
+    let mut count = 0u32;
+    loop {
+        count += 1;
+        cpu = cpu.execute(&mut mem);
+        if count == num_instructions {
+            break;
+        }
+    }
 }
 
 fn parse_title(mem: &mem::Mem) -> String {
