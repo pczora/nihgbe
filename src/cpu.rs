@@ -279,11 +279,11 @@ impl CPU {
                 // TODO: Implement! Careful, getting the next byte and
                 // running the instruction cannot be interrupted
                 let data = self.get_8_bit_arg(mem);
-                print!("PREFIX {:#04x?}\n", data);
                 match data {
                     // BIT 7, h
                     0x7c => {
-                        let bit_is_zero = ((1 << 7) & self.get_8bit_register(&Registers::H)) == 0;
+                        print!("BIT 7,H\n");
+                        let bit_is_zero = (1 & self.get_8bit_register(&Registers::H)) == 0;
                         return self.set_zero(bit_is_zero).increment_pc(2);
                     }
                     _ => {
@@ -374,12 +374,7 @@ impl CPU {
                 // Jump relative to the byte _after_ JR
                 let target = pc.wrapping_add(data as i16 + 2);
                 print!("JR NZ {:#04x?} \t Target: {:#04x?}\n", data, target);
-                print!(
-                    "zero flag: {:b}\n",
-                    self.get_8bit_register(&Registers::Flags)
-                );
                 if !self.get_zero() {
-                    println!("not zero");
                     return self.set_16bit_register(&Registers::PC, target as u16);
                 } else {
                     return self.increment_pc(2);
@@ -596,11 +591,12 @@ impl CPU {
 
     fn set_flag(&self, flag: u8, value: bool) -> CPU {
         let current_value = self.get_8bit_register(&Registers::Flags);
-        if value == true {
-            return self.set_8bit_register(&Registers::Flags, current_value | flag);
+        let new_state = if value == true {
+            self.set_8bit_register(&Registers::Flags, current_value | flag)
         } else {
-            return self.set_8bit_register(&Registers::Flags, current_value ^ flag);
+            self.set_8bit_register(&Registers::Flags, current_value & !flag)
         };
+        return new_state;
     }
 }
 
@@ -627,6 +623,19 @@ mod tests {
             new_cpu.get_8bit_register(&Registers::Flags) & ZERO_FLAG,
             0b10000000
         )
+    }
+
+    #[test]
+    fn test_get_zero() {
+        let cpu = CPU {
+            af: init_register(0, 0b10000000),
+            bc: init_16bit_register(0),
+            de: init_16bit_register(0),
+            hl: init_16bit_register(0),
+            sp: init_16bit_register(0),
+            pc: init_16bit_register(0),
+        };
+        assert!(cpu.get_zero())
     }
 
     #[test]
