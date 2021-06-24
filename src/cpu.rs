@@ -99,6 +99,7 @@ impl std::fmt::Display for Registers {
         }
     }
 }
+
 impl CPU {
     fn get_16bit_register(&self, reg: &Registers) -> u16 {
         match reg {
@@ -132,37 +133,37 @@ impl CPU {
                 return CPU {
                     af: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             Registers::BC => {
                 return CPU {
                     bc: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             Registers::DE => {
                 return CPU {
                     de: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             Registers::HL => {
                 return CPU {
                     hl: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             Registers::SP => {
                 return CPU {
                     sp: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             Registers::PC => {
                 return CPU {
                     pc: init_16bit_register(value),
                     ..*self
-                }
+                };
             }
             _ => {
                 panic!("Cannot set 16 bit value for 8 bit register")
@@ -175,49 +176,49 @@ impl CPU {
                 return CPU {
                     af: init_register(value, self.af.low_byte),
                     ..*self
-                }
+                };
             }
             Registers::Flags => {
                 return CPU {
                     af: init_register(self.af.high_byte, value),
                     ..*self
-                }
+                };
             }
             Registers::B => {
                 return CPU {
                     bc: init_register(value, self.bc.low_byte),
                     ..*self
-                }
+                };
             }
             Registers::C => {
                 return CPU {
                     bc: init_register(self.bc.high_byte, value),
                     ..*self
-                }
+                };
             }
             Registers::D => {
                 return CPU {
                     de: init_register(value, self.de.low_byte),
                     ..*self
-                }
+                };
             }
             Registers::E => {
                 return CPU {
                     de: init_register(self.de.high_byte, value),
                     ..*self
-                }
+                };
             }
             Registers::H => {
                 return CPU {
                     hl: init_register(value, self.hl.low_byte),
                     ..*self
-                }
+                };
             }
             Registers::L => {
                 return CPU {
                     hl: init_register(self.hl.high_byte, value),
                     ..*self
-                }
+                };
             }
             _ => panic!("Cannot set 16 bit register with 8 bit value"),
         }
@@ -235,14 +236,14 @@ impl CPU {
 
     pub fn execute(&self, mem: &mut mem::Mem) -> CPU {
         let opcode = mem.read(self.pc.get_16bit_value());
-        print!("{:#04x?}\t", self.pc.get_16bit_value(),);
+        print!("{:#04x?}\t", self.pc.get_16bit_value());
         match opcode {
             0x31 => self.load_16bit_immediate(mem, &Registers::SP),
             0x11 => self.load_16bit_immediate(mem, &Registers::DE),
             0xcb => {
                 // TODO: Implement! Careful, getting the next byte and
                 // running the instruction cannot be interrupted
-                let data = self.get_8_bit_arg(mem);
+                let data = self.get_8bit_arg(mem);
                 match data {
                     // BIT 7, h
                     0x7c => {
@@ -262,7 +263,7 @@ impl CPU {
                 return self.increment_pc(1);
             }
             0xc3 => {
-                let jp_dest = self.get_16_bit_arg(mem);
+                let jp_dest = self.get_16bit_arg(mem);
                 print!("JP {:#04x?}\n", jp_dest);
                 return self.set_16bit_register(&Registers::SP, jp_dest);
             }
@@ -274,37 +275,25 @@ impl CPU {
                     .increment_pc(1);
             }
             0x21 => {
-                let data = self.get_16_bit_arg(mem);
+                let data = self.get_16bit_arg(mem);
                 print!("LD HL, {:#04x?}\n", data);
                 return self
                     .set_16bit_register(&Registers::HL, data)
                     .increment_pc(3);
             }
-            0x3e => {
-                print!("LD A, ");
-                return self.ld_8bit_immediate(mem, &Registers::A);
-            }
-            0x06 => {
-                print!("LD B, ");
-                return self.ld_8bit_immediate(mem, &Registers::B);
-            }
-            0x0e => {
-                print!("LD C, ");
-                return self.ld_8bit_immediate(mem, &Registers::C);
-            }
-            0x16 => {
-                print!("LD E, ");
-                return self.ld_8bit_immediate(mem, &Registers::E);
-            }
+            0x3e => self.ld_8bit_immediate(mem, &Registers::A),
+            0x06 => self.ld_8bit_immediate(mem, &Registers::B),
+            0x0e => self.ld_8bit_immediate(mem, &Registers::C),
+            0x16 => self.ld_8bit_immediate(mem, &Registers::E),
             0xf0 => {
-                let data = self.get_8_bit_arg(mem) as u16;
+                let data = self.get_8bit_arg(mem) as u16;
                 print!("LD A, ({:#04x?})\n", 0xff00 + data);
                 return self
                     .set_8bit_register(&Registers::A, mem.read(0xff00 + data))
                     .increment_pc(2);
             }
             0x32 => {
-                print!("LDD (HL), A \n");
+                print!("LDD (HL), A\n");
                 mem.write(
                     self.hl.get_16bit_value(),
                     self.get_8bit_register(&Registers::A),
@@ -316,17 +305,14 @@ impl CPU {
                     )
                     .increment_pc(1);
             }
-            0x05 => return self.dec_8bit_register(&Registers::B),
-            0x0d => return self.dec_8bit_register(&Registers::C),
-            0x1d => return self.dec_8bit_register(&Registers::E),
-            0x25 => {
-                //TODO: Implement
-                //TODO: Half carry flag?
-                print!("DEC H \n");
-                unimplemented!();
-            }
+            0x22 => self.load_increment_hl_a(mem),
+            0x23 => self.inc_16bit_register(&Registers::HL),
+            0x05 => self.dec_8bit_register(&Registers::B),
+            0x0d => self.dec_8bit_register(&Registers::C),
+            0x1d => self.dec_8bit_register(&Registers::E),
+            0x25 => self.dec_8bit_register(&Registers::H),
             0x20 => {
-                let data = self.get_8_bit_arg(mem) as i8;
+                let data = self.get_8bit_arg(mem) as i8;
                 let pc = self.pc.get_16bit_value() as i16;
                 // Jump relative to the byte _after_ JR
                 let target = pc.wrapping_add(data as i16 + 2);
@@ -353,7 +339,7 @@ impl CPU {
                 return self.increment_pc(1);
             }
             0xe0 => {
-                let data = self.get_8_bit_arg(mem) as u16;
+                let data = self.get_8bit_arg(mem) as u16;
                 print!("LDH ({:#04x?}), A \n", 0xff00 + data);
                 mem.write(0xff00 + data, self.get_8bit_register(&Registers::A) as u8);
                 return self.increment_pc(2);
@@ -362,13 +348,13 @@ impl CPU {
                 return self.cp_immediate(mem);
             }
             0x36 => {
-                let data = self.get_8_bit_arg(mem);
+                let data = self.get_8bit_arg(mem);
                 print!("LD (HL), {:#04x?} \n", data);
                 mem.write(self.hl.get_16bit_value(), data);
                 return self.increment_pc(2);
             }
             0xea => {
-                let data = self.get_16_bit_arg(mem);
+                let data = self.get_16bit_arg(mem);
                 print!("LD ({:#04x?}), A\n", data);
                 mem.write(data, self.af.get_high_byte());
                 return self.increment_pc(3);
@@ -381,7 +367,7 @@ impl CPU {
                 );
                 return self.increment_pc(1);
             }
-            0x0c => return self.inc(&Registers::C),
+            0x0c => return self.inc_8bit_register(&Registers::C),
             0x77 => {
                 print!("LD (HL), A\n");
                 mem.write(
@@ -397,37 +383,31 @@ impl CPU {
                     .increment_pc(1);
             }
             0xcd => {
-                let data = self.get_16_bit_arg(mem);
+                let data = self.get_16bit_arg(mem);
                 print!("CALL {:#04x?}\n", data);
                 return self
-                    .push(mem, self.pc.get_16bit_value() + 3)
+                    .push(mem, self.get_16bit_register(&Registers::PC) + 3)
                     .set_16bit_register(&Registers::PC, data);
             }
-            0x4f => {
-                print!("LD C, A\n");
-                return self
-                    .set_8bit_register(&Registers::C, self.get_8bit_register(&Registers::A))
-                    .increment_pc(1);
-            }
+            0x4f => self.load(&Registers::C, &Registers::A),
+            0x7b => self.load(&Registers::A, &Registers::E),
             0xc5 => {
                 print!("PUSH BC\n");
-                self.push_two_bytes(
-                    mem,
-                    self.get_8bit_register(&Registers::B),
-                    self.get_8bit_register(&Registers::C),
-                );
+                self.push(mem, self.get_16bit_register(&Registers::BC));
                 return self.increment_pc(1);
             }
+            0xc9 => self.ret(mem),
+            0x90 => todo!(),
             _ => {
-                print!("Unknown opcopde: {:#04x?}\n", opcode);
-                return CPU { ..*self };
+                print!("Unknown opcode: {:#04x?}\n", opcode);
+                panic!();
             }
         }
     }
 
     /// Mnemonic: LD r, n
     fn load_16bit_immediate(&self, mem: &mem::Mem, reg: &Registers) -> CPU {
-        let data = self.get_16_bit_arg(mem);
+        let data = self.get_16bit_arg(mem);
         print!("LD {}, {:#04x?}\n", reg, data);
         return self.set_16bit_register(reg, data).increment_pc(3);
     }
@@ -436,8 +416,8 @@ impl CPU {
     ///
     /// Mnemonic: ld r, n
     fn ld_8bit_immediate(&self, mem: &mem::Mem, reg: &Registers) -> CPU {
-        let data = self.get_8_bit_arg(mem);
-        print!("{:#04x?}\n", data);
+        let data = self.get_8bit_arg(mem);
+        print!("LD {}, {:#04x?}\n", reg, data);
         self.set_8bit_register(reg, data).increment_pc(2)
     }
 
@@ -445,7 +425,7 @@ impl CPU {
     ///
     /// Mnemonic: cp n
     fn cp_immediate(&self, mem: &mem::Mem) -> CPU {
-        let data = self.get_8_bit_arg(mem);
+        let data = self.get_8bit_arg(mem);
         print!("CP {:#04x?}\n", data);
         return self
             .compare(self.get_8bit_register(&Registers::A), data)
@@ -487,8 +467,8 @@ impl CPU {
             .increment_pc(1);
     }
 
-    fn inc(&self, reg: &Registers) -> CPU {
-        print!("INC {}", reg);
+    fn inc_8bit_register(&self, reg: &Registers) -> CPU {
+        print!("INC {}\n", reg);
         //TODO: Half carry flag?
         let new_value = (self.get_8bit_register(reg)).wrapping_add(1);
         return self
@@ -498,15 +478,23 @@ impl CPU {
             .increment_pc(1);
     }
 
+    fn inc_16bit_register(&self, reg: &Registers) -> CPU {
+        print!("INC {}\n", reg);
+        //TODO: Half carry flag?
+        let current_value = self.get_16bit_register(reg);
+        let new_value = current_value.wrapping_add(1);
+        return self.set_16bit_register(reg, new_value).set_zero(new_value == 0).set_subtract(false).increment_pc(1);
+    }
+
     fn push_two_bytes(&self, mem: &mut mem::Mem, byte1: u8, byte2: u8) -> CPU {
-        let current_sp = self.sp.get_16bit_value();
+        let current_sp = self.get_16bit_register(&Registers::SP);
         mem.write(current_sp, byte1);
         mem.write(current_sp - 1, byte2);
         return self.decrement_16bit_register(&Registers::SP, 2);
     }
     fn push(&self, mem: &mut mem::Mem, value: u16) -> CPU {
         let (high_byte, low_byte) = self.byte_split(value);
-        return self.push_two_bytes(mem, high_byte, low_byte);
+        return self.push_two_bytes(mem, low_byte, high_byte);
     }
 
     fn byte_split(&self, value: u16) -> (u8, u8) {
@@ -515,11 +503,15 @@ impl CPU {
         (high_byte, low_byte)
     }
 
-    fn get_8_bit_arg(&self, mem: &mem::Mem) -> u8 {
+    fn combine_bytes(&self, msb: u8, lsb: u8) -> u16 {
+        ((msb as u16) << 8) | (lsb as u16)
+    }
+
+    fn get_8bit_arg(&self, mem: &mem::Mem) -> u8 {
         return mem.read(self.pc.get_16bit_value() + 1);
     }
 
-    fn get_16_bit_arg(&self, mem: &mem::Mem) -> u16 {
+    fn get_16bit_arg(&self, mem: &mem::Mem) -> u16 {
         let current_pc = self.pc.get_16bit_value();
         return ((mem.read(current_pc + 2) as u16) << 8) | (mem.read(current_pc + 1) as u16);
     }
@@ -561,7 +553,47 @@ impl CPU {
         };
         return new_state;
     }
+    fn rotate_left(&self, reg: &Registers) -> CPU {
+        print!("RL {}\n", reg);
+        let current_value = self.get_8bit_register(reg);
+        let carry = ((current_value & 0b10000000) == 128);
+        let new_value = current_value << 1;
+        let new_state = self.set_carry(carry).set_zero(new_value == 0).set_8bit_register(reg, new_value).increment_pc(1);
+        return new_state;
+    }
+
+    fn load_increment_hl_a(&self, mem: &mut mem::Mem) -> CPU {
+        print!("LDI (HL), A\n");
+        mem.write(
+            self.hl.get_16bit_value(),
+            self.get_8bit_register(&Registers::A),
+        );
+        return self
+            .set_16bit_register(
+                &Registers::HL,
+                self.get_16bit_register(&Registers::HL).wrapping_add(1),
+            )
+            .increment_pc(1);
+    }
+    fn ret(&self, mem: &mut mem::Mem) -> CPU {
+        print!("RET\n");
+        let current_sp = self.get_16bit_register(&Registers::SP);
+        let lsb = mem.read(current_sp);
+        let msb = mem.read(current_sp + 1);
+        let new_sp = current_sp + 2;
+        let address = self.combine_bytes(msb, lsb);
+
+        self.set_16bit_register(&Registers::PC, address).set_16bit_register(&Registers::SP, new_sp)
+    }
+    fn load(&self, dst: &Registers, src: &Registers) -> CPU {
+        print!("LD {}, {}\n", dst, src);
+        return self
+            .set_8bit_register(dst, self.get_8bit_register(src))
+            .increment_pc(1);
+    }
 }
+
+
 
 pub fn init_cpu() -> CPU {
     CPU {
@@ -613,5 +645,32 @@ mod tests {
         };
         let new_cpu = cpu.set_zero(false);
         assert_eq!(new_cpu.get_8bit_register(&Registers::Flags) & ZERO_FLAG, 0)
+    }
+
+    #[test]
+    fn test_set_carry() {
+        let cpu = init_cpu();
+        let new_cpu = cpu.set_carry(true);
+        assert_eq!(
+            new_cpu.get_8bit_register(&Registers::Flags) & CARRY_FLAG,
+            CARRY_FLAG
+        )
+    }
+
+    #[test]
+    fn test_rotate_left() {
+        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b10000000);
+        let new_cpu = cpu.rotate_left(&Registers::A);
+        assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0);
+        assert!(new_cpu.get_carry());
+        assert!(new_cpu.get_zero());
+        assert_eq!(new_cpu.get_16bit_register(&Registers::PC), cpu.get_16bit_register(&Registers::PC) + 1);
+    }
+
+    #[test]
+    fn test_combine_bytes() {
+        let cpu = init_cpu();
+        assert_eq!(0b0000000100000001, cpu.combine_bytes(0b00000001, 0b00000001));
+
     }
 }
