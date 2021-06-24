@@ -5,50 +5,6 @@ const SUBTRACT_FLAG: u8 = 0b01000000;
 const HALFCARRY_FLAG: u8 = 0b00100000;
 const CARRY_FLAG: u8 = 0b00010000;
 
-const OPCODE_NOP: u8 = 0x00;
-const OPCODE_DEC_B: u8 = 0x05;
-const OPCODE_DEC_C: u8 = 0x0d;
-const OPCODE_DEC_E: u8 = 0x1d;
-const OPCODE_DEC_H: u8 = 0x25;
-const OPCODE_INC_C: u8 = 0x0c;
-const OPCODE_XOR_A: u8 = 0xAF;
-const OPCODE_LD_HL: u8 = 0x21;
-const OPCODE_LDD_HL_A: u8 = 0x32;
-const OPCODE_LDH_ADDR_A: u8 = 0xe0;
-const OPCODE_LD_ADDR_HL_IMMEDIATE: u8 = 0x36;
-
-const OPCODE_RRA: u8 = 0x1f;
-
-const OPCODE_DI: u8 = 0xf3;
-
-// Jumps & Calls
-const OPCODE_JP: u8 = 0xc3;
-const OPCODE_JR_NZ: u8 = 0x20;
-const OPCODE_CALL: u8 = 0xcd;
-
-// 8 bit loads
-const OPCODE_LD_A_IMMEDIATE: u8 = 0x3e;
-const OPCODE_LD_B_IMMEDIATE: u8 = 0x06;
-const OPCODE_LD_C_IMMEDIATE: u8 = 0x0e;
-const OPCODE_LD_E_IMMEDIATE: u8 = 0x16;
-const OPCODE_LD_A_ADDR_DE: u8 = 0x1a;
-const OPCODE_LD_ADDR_C_A: u8 = 0xe2;
-const OPCODE_LD_ADDR_HL_A: u8 = 0x77;
-const OPCODE_LD_C_A: u8 = 0x4f;
-
-const OPCODE_LD_ADDRESS_A: u8 = 0xea;
-
-// 16 bit loads
-const OPCODE_LD_SP_IMMEDIATE: u8 = 0x31;
-const OPCODE_LD_DE_IMMEDIATE: u8 = 0x11;
-const OPCODE_PUSH_BC: u8 = 0xc5;
-
-const OPCODE_LDH_A_ADDR: u8 = 0xf0;
-
-const OPCODE_CP_A_D: u8 = 0xfe;
-
-const OPCODE_PREFIX: u8 = 0xcb;
-
 #[derive(Copy, Clone)]
 pub struct CPU {
     af: Register,
@@ -281,9 +237,9 @@ impl CPU {
         let opcode = mem.read(self.pc.get_16bit_value());
         print!("{:#04x?}\t", self.pc.get_16bit_value(),);
         match opcode {
-            OPCODE_LD_SP_IMMEDIATE => self.load_16bit_immediate(mem, &Registers::SP),
-            OPCODE_LD_DE_IMMEDIATE => self.load_16bit_immediate(mem, &Registers::DE),
-            OPCODE_PREFIX => {
+            0x31 => self.load_16bit_immediate(mem, &Registers::SP),
+            0x11 => self.load_16bit_immediate(mem, &Registers::DE),
+            0xcb => {
                 // TODO: Implement! Careful, getting the next byte and
                 // running the instruction cannot be interrupted
                 let data = self.get_8_bit_arg(mem);
@@ -294,59 +250,60 @@ impl CPU {
                         let bit_is_zero = (1 & self.get_8bit_register(&Registers::H)) == 0;
                         return self.set_zero(bit_is_zero).increment_pc(2);
                     }
+                    0x11 => self.rotate_left(&Registers::C),
                     _ => {
                         print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
                         panic!()
                     }
                 }
             }
-            OPCODE_NOP => {
+            0x00 => {
                 print!("NOP\n");
                 return self.increment_pc(1);
             }
-            OPCODE_JP => {
+            0xc3 => {
                 let jp_dest = self.get_16_bit_arg(mem);
                 print!("JP {:#04x?}\n", jp_dest);
                 return self.set_16bit_register(&Registers::SP, jp_dest);
             }
-            OPCODE_XOR_A => {
+            0xAF => {
                 print!("XOR A\n");
                 let current_a = self.get_8bit_register(&Registers::A);
                 return self
                     .set_8bit_register(&Registers::A, current_a ^ current_a)
                     .increment_pc(1);
             }
-            OPCODE_LD_HL => {
+            0x21 => {
                 let data = self.get_16_bit_arg(mem);
                 print!("LD HL, {:#04x?}\n", data);
                 return self
                     .set_16bit_register(&Registers::HL, data)
                     .increment_pc(3);
             }
-            OPCODE_LD_A_IMMEDIATE => {
+            0x3e => {
                 print!("LD A, ");
                 return self.ld_8bit_immediate(mem, &Registers::A);
             }
-            OPCODE_LD_B_IMMEDIATE => {
+            0x06 => {
                 print!("LD B, ");
                 return self.ld_8bit_immediate(mem, &Registers::B);
             }
-            OPCODE_LD_C_IMMEDIATE => {
+            0x0e => {
                 print!("LD C, ");
                 return self.ld_8bit_immediate(mem, &Registers::C);
             }
-            OPCODE_LD_E_IMMEDIATE => {
+            0x16 => {
                 print!("LD E, ");
                 return self.ld_8bit_immediate(mem, &Registers::E);
             }
-            OPCODE_LDH_A_ADDR => {
+            0xf0 => {
                 let data = self.get_8_bit_arg(mem) as u16;
                 print!("LD A, ({:#04x?})\n", 0xff00 + data);
                 return self
                     .set_8bit_register(&Registers::A, mem.read(0xff00 + data))
                     .increment_pc(2);
             }
-            OPCODE_LDD_HL_A => {
+            0x32 => {
                 print!("LDD (HL), A \n");
                 mem.write(
                     self.hl.get_16bit_value(),
@@ -359,16 +316,16 @@ impl CPU {
                     )
                     .increment_pc(1);
             }
-            OPCODE_DEC_B => return self.dec_8bit_register(&Registers::B),
-            OPCODE_DEC_C => return self.dec_8bit_register(&Registers::C),
-            OPCODE_DEC_E => return self.dec_8bit_register(&Registers::E),
-            OPCODE_DEC_H => {
+            0x05 => return self.dec_8bit_register(&Registers::B),
+            0x0d => return self.dec_8bit_register(&Registers::C),
+            0x1d => return self.dec_8bit_register(&Registers::E),
+            0x25 => {
                 //TODO: Implement
                 //TODO: Half carry flag?
                 print!("DEC H \n");
                 unimplemented!();
             }
-            OPCODE_JR_NZ => {
+            0x20 => {
                 let data = self.get_8_bit_arg(mem) as i8;
                 let pc = self.pc.get_16bit_value() as i16;
                 // Jump relative to the byte _after_ JR
@@ -380,7 +337,7 @@ impl CPU {
                     return self.increment_pc(2);
                 }
             }
-            OPCODE_RRA => {
+            0x1f => {
                 print!("RRA \n");
                 let old_carry: u8 = if self.get_carry() { 1 } else { 0 };
                 let old_a = self.af.get_high_byte();
@@ -390,33 +347,33 @@ impl CPU {
                     .set_zero(new_a == 0)
                     .increment_pc(1);
             }
-            OPCODE_DI => {
+            0xf3 => {
                 //TODO: Implement (Disable interrupts)
                 print!("DI \n");
                 return self.increment_pc(1);
             }
-            OPCODE_LDH_ADDR_A => {
+            0xe0 => {
                 let data = self.get_8_bit_arg(mem) as u16;
                 print!("LDH ({:#04x?}), A \n", 0xff00 + data);
                 mem.write(0xff00 + data, self.get_8bit_register(&Registers::A) as u8);
                 return self.increment_pc(2);
             }
-            OPCODE_CP_A_D => {
+            0xfe => {
                 return self.cp_immediate(mem);
             }
-            OPCODE_LD_ADDR_HL_IMMEDIATE => {
+            0x36 => {
                 let data = self.get_8_bit_arg(mem);
                 print!("LD (HL), {:#04x?} \n", data);
                 mem.write(self.hl.get_16bit_value(), data);
                 return self.increment_pc(2);
             }
-            OPCODE_LD_ADDRESS_A => {
+            0xea => {
                 let data = self.get_16_bit_arg(mem);
                 print!("LD ({:#04x?}), A\n", data);
                 mem.write(data, self.af.get_high_byte());
                 return self.increment_pc(3);
             }
-            OPCODE_LD_ADDR_C_A => {
+            0xe2 => {
                 print!("LD (C), A\n");
                 mem.write(
                     self.get_8bit_register(&Registers::C) as u16 + 0xff00,
@@ -424,8 +381,8 @@ impl CPU {
                 );
                 return self.increment_pc(1);
             }
-            OPCODE_INC_C => return self.inc(&Registers::C),
-            OPCODE_LD_ADDR_HL_A => {
+            0x0c => return self.inc(&Registers::C),
+            0x77 => {
                 print!("LD (HL), A\n");
                 mem.write(
                     self.hl.get_16bit_value(),
@@ -433,26 +390,26 @@ impl CPU {
                 );
                 return self.increment_pc(1);
             }
-            OPCODE_LD_A_ADDR_DE => {
+            0x1a => {
                 print!("LD A, (DE)\n");
                 return self
                     .set_8bit_register(&Registers::A, mem.read(self.de.get_16bit_value()))
                     .increment_pc(1);
             }
-            OPCODE_CALL => {
+            0xcd => {
                 let data = self.get_16_bit_arg(mem);
                 print!("CALL {:#04x?}\n", data);
                 return self
                     .push(mem, self.pc.get_16bit_value() + 3)
                     .set_16bit_register(&Registers::PC, data);
             }
-            OPCODE_LD_C_A => {
+            0x4f => {
                 print!("LD C, A\n");
                 return self
                     .set_8bit_register(&Registers::C, self.get_8bit_register(&Registers::A))
                     .increment_pc(1);
             }
-            OPCODE_PUSH_BC => {
+            0xc5 => {
                 print!("PUSH BC\n");
                 self.push_two_bytes(
                     mem,
