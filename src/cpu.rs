@@ -123,6 +123,26 @@ enum Registers {
     PC,
 }
 
+impl std::fmt::Display for Registers {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Registers::AF => write!(f, "AF"),
+            Registers::BC => write!(f, "BC"),
+            Registers::DE => write!(f, "DE"),
+            Registers::HL => write!(f, "HL"),
+            Registers::SP => write!(f, "SP"),
+            Registers::PC => write!(f, "PC"),
+            Registers::A => write!(f, "A"),
+            Registers::Flags => write!(f, "Flags"),
+            Registers::B => write!(f, "B"),
+            Registers::C => write!(f, "C"),
+            Registers::D => write!(f, "D"),
+            Registers::E => write!(f, "E"),
+            Registers::H => write!(f, "H"),
+            Registers::L => write!(f, "L"),
+        }
+    }
+}
 impl CPU {
     fn get_16bit_register(&self, reg: &Registers) -> u16 {
         match reg {
@@ -261,20 +281,8 @@ impl CPU {
         let opcode = mem.read(self.pc.get_16bit_value());
         print!("{:#04x?}\t", self.pc.get_16bit_value(),);
         match opcode {
-            OPCODE_LD_SP_IMMEDIATE => {
-                let data = self.get_16_bit_arg(mem);
-                print!("LD SP, {:#04x?}\n", data);
-                return self
-                    .set_16bit_register(&Registers::SP, data)
-                    .increment_pc(3);
-            }
-            OPCODE_LD_DE_IMMEDIATE => {
-                let data = self.get_16_bit_arg(mem);
-                print!("LD DE, {:#04x?}\n", data);
-                return self
-                    .set_16bit_register(&Registers::DE, data)
-                    .increment_pc(3);
-            }
+            OPCODE_LD_SP_IMMEDIATE => self.load_16bit_immediate(mem, &Registers::SP),
+            OPCODE_LD_DE_IMMEDIATE => self.load_16bit_immediate(mem, &Registers::DE),
             OPCODE_PREFIX => {
                 // TODO: Implement! Careful, getting the next byte and
                 // running the instruction cannot be interrupted
@@ -287,7 +295,8 @@ impl CPU {
                         return self.set_zero(bit_is_zero).increment_pc(2);
                     }
                     _ => {
-                        panic!("Invalid 16 byte opcode")
+                        print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
+                        panic!()
                     }
                 }
             }
@@ -316,19 +325,19 @@ impl CPU {
             }
             OPCODE_LD_A_IMMEDIATE => {
                 print!("LD A, ");
-                return self.ld_8_bit_immediate(mem, &Registers::A);
+                return self.ld_8bit_immediate(mem, &Registers::A);
             }
             OPCODE_LD_B_IMMEDIATE => {
                 print!("LD B, ");
-                return self.ld_8_bit_immediate(mem, &Registers::B);
+                return self.ld_8bit_immediate(mem, &Registers::B);
             }
             OPCODE_LD_C_IMMEDIATE => {
                 print!("LD C, ");
-                return self.ld_8_bit_immediate(mem, &Registers::C);
+                return self.ld_8bit_immediate(mem, &Registers::C);
             }
             OPCODE_LD_E_IMMEDIATE => {
                 print!("LD E, ");
-                return self.ld_8_bit_immediate(mem, &Registers::E);
+                return self.ld_8bit_immediate(mem, &Registers::E);
             }
             OPCODE_LDH_A_ADDR => {
                 let data = self.get_8_bit_arg(mem) as u16;
@@ -350,18 +359,9 @@ impl CPU {
                     )
                     .increment_pc(1);
             }
-            OPCODE_DEC_B => {
-                print!("DEC B \n");
-                return self.dec_8bit_register(&Registers::B);
-            }
-            OPCODE_DEC_C => {
-                print!("DEC C \n");
-                return self.dec_8bit_register(&Registers::C);
-            }
-            OPCODE_DEC_E => {
-                print!("DEC E \n");
-                return self.dec_8bit_register(&Registers::E);
-            }
+            OPCODE_DEC_B => return self.dec_8bit_register(&Registers::B),
+            OPCODE_DEC_C => return self.dec_8bit_register(&Registers::C),
+            OPCODE_DEC_E => return self.dec_8bit_register(&Registers::E),
             OPCODE_DEC_H => {
                 //TODO: Implement
                 //TODO: Half carry flag?
@@ -424,10 +424,7 @@ impl CPU {
                 );
                 return self.increment_pc(1);
             }
-            OPCODE_INC_C => {
-                print!("INC C\n");
-                return self.inc(&Registers::C);
-            }
+            OPCODE_INC_C => return self.inc(&Registers::C),
             OPCODE_LD_ADDR_HL_A => {
                 print!("LD (HL), A\n");
                 mem.write(
@@ -471,10 +468,17 @@ impl CPU {
         }
     }
 
+    /// Mnemonic: LD r, n
+    fn load_16bit_immediate(&self, mem: &mem::Mem, reg: &Registers) -> CPU {
+        let data = self.get_16_bit_arg(mem);
+        print!("LD {}, {:#04x?}\n", reg, data);
+        return self.set_16bit_register(reg, data).increment_pc(3);
+    }
+
     /// Loads an 8 bit immediate value to a register
     ///
     /// Mnemonic: ld r, n
-    fn ld_8_bit_immediate(&self, mem: &mem::Mem, reg: &Registers) -> CPU {
+    fn ld_8bit_immediate(&self, mem: &mem::Mem, reg: &Registers) -> CPU {
         let data = self.get_8_bit_arg(mem);
         print!("{:#04x?}\n", data);
         self.set_8bit_register(reg, data).increment_pc(2)
@@ -505,6 +509,7 @@ impl CPU {
 
     /// Decrements a given register value and sets the flags appropriately
     fn dec_8bit_register(&self, reg: &Registers) -> CPU {
+        print!("DEC {}", reg);
         //TODO: Half carry flag?
         let new_value = self.get_8bit_register(reg).wrapping_sub(1);
         return self
@@ -526,6 +531,7 @@ impl CPU {
     }
 
     fn inc(&self, reg: &Registers) -> CPU {
+        print!("INC {}", reg);
         //TODO: Half carry flag?
         let new_value = (self.get_8bit_register(reg)).wrapping_add(1);
         return self
