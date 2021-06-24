@@ -217,49 +217,49 @@ impl CPU {
         match reg {
             Registers::A => {
                 return CPU {
-                    af: init_register(value, 0),
+                    af: init_register(value, self.af.low_byte),
                     ..*self
                 }
             }
             Registers::Flags => {
                 return CPU {
-                    af: init_register(0, value),
+                    af: init_register(self.af.high_byte, value),
                     ..*self
                 }
             }
             Registers::B => {
                 return CPU {
-                    bc: init_register(value, 0),
+                    bc: init_register(value, self.bc.low_byte),
                     ..*self
                 }
             }
             Registers::C => {
                 return CPU {
-                    bc: init_register(0, value),
+                    bc: init_register(self.bc.high_byte, value),
                     ..*self
                 }
             }
             Registers::D => {
                 return CPU {
-                    de: init_register(value, 0),
+                    de: init_register(value, self.de.low_byte),
                     ..*self
                 }
             }
             Registers::E => {
                 return CPU {
-                    de: init_register(0, value),
+                    de: init_register(self.de.high_byte, value),
                     ..*self
                 }
             }
             Registers::H => {
                 return CPU {
-                    hl: init_register(value, 0),
+                    hl: init_register(value, self.hl.low_byte),
                     ..*self
                 }
             }
             Registers::L => {
                 return CPU {
-                    hl: init_register(0, value),
+                    hl: init_register(self.hl.high_byte, value),
                     ..*self
                 }
             }
