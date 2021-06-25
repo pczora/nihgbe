@@ -251,6 +251,7 @@ impl CPU {
                         let bit_is_zero = (1 & self.get_8bit_register(&Registers::H)) == 0;
                         return self.set_zero(bit_is_zero).increment_pc(2);
                     }
+                    // RL C
                     0x11 => self.rotate_left(&Registers::C),
                     _ => {
                         print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
@@ -295,7 +296,7 @@ impl CPU {
             0x32 => {
                 print!("LDD (HL), A\n");
                 mem.write(
-                    self.hl.get_16bit_value(),
+                    self.get_16bit_register(&Registers::HL),
                     self.get_8bit_register(&Registers::A),
                 );
                 return self
@@ -313,7 +314,7 @@ impl CPU {
             0x25 => self.dec_8bit_register(&Registers::H),
             0x20 => {
                 let data = self.get_8bit_arg(mem) as i8;
-                let pc = self.pc.get_16bit_value() as i16;
+                let pc = self.get_16bit_register(&Registers::PC) as i16;
                 // Jump relative to the byte _after_ JR
                 let target = pc.wrapping_add(data as i16 + 2);
                 print!("JR NZ {:#04x?} \t Target: {:#04x?}\n", data, target);
@@ -326,7 +327,7 @@ impl CPU {
             0x1f => {
                 print!("RRA \n");
                 let old_carry: u8 = if self.get_carry() { 1 } else { 0 };
-                let old_a = self.af.get_high_byte();
+                let old_a = self.get_8bit_register(&Registers::A);
                 let new_a = (old_a >> 1) | (old_carry << 7);
                 return self
                     .set_carry((old_a & 1) == 1)
@@ -350,13 +351,13 @@ impl CPU {
             0x36 => {
                 let data = self.get_8bit_arg(mem);
                 print!("LD (HL), {:#04x?} \n", data);
-                mem.write(self.hl.get_16bit_value(), data);
+                mem.write(self.get_16bit_register(&Registers::HL), data);
                 return self.increment_pc(2);
             }
             0xea => {
                 let data = self.get_16bit_arg(mem);
                 print!("LD ({:#04x?}), A\n", data);
-                mem.write(data, self.af.get_high_byte());
+                mem.write(data, self.get_8bit_register(&Registers::A));
                 return self.increment_pc(3);
             }
             0xe2 => {
@@ -371,7 +372,7 @@ impl CPU {
             0x77 => {
                 print!("LD (HL), A\n");
                 mem.write(
-                    self.hl.get_16bit_value(),
+                    self.get_16bit_register(&Registers::HL),
                     self.get_8bit_register(&Registers::A),
                 );
                 return self.increment_pc(1);
@@ -379,7 +380,7 @@ impl CPU {
             0x1a => {
                 print!("LD A, (DE)\n");
                 return self
-                    .set_8bit_register(&Registers::A, mem.read(self.de.get_16bit_value()))
+                    .set_8bit_register(&Registers::A, mem.read(self.get_16bit_register(&Registers::DE)))
                     .increment_pc(1);
             }
             0xcd => {
@@ -565,7 +566,7 @@ impl CPU {
     fn load_increment_hl_a(&self, mem: &mut mem::Mem) -> CPU {
         print!("LDI (HL), A\n");
         mem.write(
-            self.hl.get_16bit_value(),
+            self.get_16bit_register(&Registers::HL),
             self.get_8bit_register(&Registers::A),
         );
         return self
