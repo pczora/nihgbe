@@ -226,12 +226,19 @@ impl CPU {
     fn increment_pc(&self, value: u16) -> CPU {
         self.set_16bit_register(
             &Registers::PC,
-            self.pc.get_16bit_value().wrapping_add(value),
+            self.get_16bit_register(&Registers::PC).wrapping_add(value),
         )
     }
 
-    fn decrement_16bit_register(&self, reg: &Registers, value: u16) -> CPU {
-        return self.set_16bit_register(reg, self.get_16bit_register(reg).wrapping_sub(value));
+    fn increment_sp(&self, value: u16) -> CPU {
+        self.set_16bit_register(
+            &Registers::SP,
+            self.get_16bit_register(&Registers::SP).wrapping_add(value),
+        )
+    }
+
+    fn decrement_sp(&self, value: u16) -> CPU {
+        return self.set_16bit_register(&Registers::SP, self.get_16bit_register(&Registers::SP).wrapping_sub(value));
     }
 
     pub fn execute(&self, mem: &mut mem::Mem) -> CPU {
@@ -252,7 +259,9 @@ impl CPU {
                         return self.set_zero(bit_is_zero).increment_pc(2);
                     }
                     // RL C
-                    0x11 => self.rotate_left(&Registers::C),
+                    0x11 => self.prefixed_rotate_left(&Registers::C),
+                    // RL A
+                    0x17 => self.prefixed_rotate_left(&Registers::A),
                     _ => {
                         print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
                         panic!()
@@ -398,7 +407,8 @@ impl CPU {
                 return self.increment_pc(1);
             }
             0xc9 => self.ret(mem),
-            0x90 => todo!(),
+            0x17 => self.rla(), // RLA
+            0xc1 => self.pop(&Registers::BC, mem), // POP BC
             _ => {
                 print!("Unknown opcode: {:#04x?}\n", opcode);
                 panic!();
@@ -447,7 +457,7 @@ impl CPU {
 
     /// Decrements a given register value and sets the flags appropriately
     fn dec_8bit_register(&self, reg: &Registers) -> CPU {
-        print!("DEC {}", reg);
+        print!("DEC {}\n", reg);
         //TODO: Half carry flag?
         let new_value = self.get_8bit_register(reg).wrapping_sub(1);
         return self
@@ -491,7 +501,7 @@ impl CPU {
         let current_sp = self.get_16bit_register(&Registers::SP);
         mem.write(current_sp, byte1);
         mem.write(current_sp - 1, byte2);
-        return self.decrement_16bit_register(&Registers::SP, 2);
+        return self.decrement_sp(2);
     }
     fn push(&self, mem: &mut mem::Mem, value: u16) -> CPU {
         let (high_byte, low_byte) = self.byte_split(value);
@@ -554,14 +564,26 @@ impl CPU {
         };
         return new_state;
     }
-    fn rotate_left(&self, reg: &Registers) -> CPU {
+
+    fn prefixed_rotate_left(&self, reg: &Registers) -> CPU {
         print!("RL {}\n", reg);
+        self.rotate_left(reg).increment_pc(2)
+    }
+
+    fn rla(&self) -> CPU {
+        print!("RLA\n");
+        self.rotate_left(&Registers::A).increment_pc(1)
+    }
+
+    fn rotate_left(&self, reg: &Registers) -> CPU {
         let current_value = self.get_8bit_register(reg);
         let carry = ((current_value & 0b10000000) == 128);
         let new_value = current_value << 1;
-        let new_state = self.set_carry(carry).set_zero(new_value == 0).set_8bit_register(reg, new_value).increment_pc(1);
-        return new_state;
+        self.set_carry(carry)
+            .set_zero(new_value == 0)
+            .set_8bit_register(reg, new_value)
     }
+
 
     fn load_increment_hl_a(&self, mem: &mut mem::Mem) -> CPU {
         print!("LDI (HL), A\n");
@@ -576,21 +598,37 @@ impl CPU {
             )
             .increment_pc(1);
     }
-    fn ret(&self, mem: &mut mem::Mem) -> CPU {
+    fn ret(&self, mem: &mem::Mem) -> CPU {
         print!("RET\n");
-        let current_sp = self.get_16bit_register(&Registers::SP);
-        let lsb = mem.read(current_sp);
-        let msb = mem.read(current_sp + 1);
-        let new_sp = current_sp + 2;
-        let address = self.combine_bytes(msb, lsb);
-
-        self.set_16bit_register(&Registers::PC, address).set_16bit_register(&Registers::SP, new_sp)
+        let address = self.stack_pop(mem);
+        self.set_16bit_register(&Registers::PC, address).increment_sp(2)
     }
+
     fn load(&self, dst: &Registers, src: &Registers) -> CPU {
         print!("LD {}, {}\n", dst, src);
         return self
             .set_8bit_register(dst, self.get_8bit_register(src))
             .increment_pc(1);
+    }
+
+    fn pop(&self, reg: &Registers, mem: &mem::Mem) -> CPU {
+        print!("POP {}\n", reg);
+        let value = self.stack_pop(mem);
+        match reg {
+            Registers::BC => self.set_16bit_register(&Registers::BC, value).increment_sp(2).increment_pc(1),
+            Registers::DE => todo!(),
+            Registers::HL => todo!(),
+            Registers::AF => todo!(),
+            _ => panic!{"Invalid register to pop to"}
+        }
+    }
+
+    /// does not really pop (does not increment SP)
+    fn stack_pop(&self, mem: &mem::Mem) -> u16 {
+        let current_sp = self.get_16bit_register(&Registers::SP);
+        let lsb = mem.read(current_sp);
+        let msb = mem.read(current_sp + 1);
+        self.combine_bytes(msb, lsb)
     }
 }
 
@@ -659,13 +697,13 @@ mod tests {
     }
 
     #[test]
-    fn test_rotate_left() {
+    fn test_prefixed_rotate_left() {
         let cpu = init_cpu().set_8bit_register(&Registers::A, 0b10000000);
-        let new_cpu = cpu.rotate_left(&Registers::A);
+        let new_cpu = cpu.prefixed_rotate_left(&Registers::A);
         assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0);
         assert!(new_cpu.get_carry());
         assert!(new_cpu.get_zero());
-        assert_eq!(new_cpu.get_16bit_register(&Registers::PC), cpu.get_16bit_register(&Registers::PC) + 1);
+        assert_eq!(new_cpu.get_16bit_register(&Registers::PC), cpu.get_16bit_register(&Registers::PC) + 2);
     }
 
     #[test]
