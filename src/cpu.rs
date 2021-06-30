@@ -226,19 +226,22 @@ impl CPU {
     fn increment_pc(&self, value: u16) -> CPU {
         self.set_16bit_register(
             &Registers::PC,
-            self.get_16bit_register(&Registers::PC).wrapping_add(value),
+            self.get_16bit_register(&Registers::PC).wrapping_add(value)
         )
     }
 
     fn increment_sp(&self, value: u16) -> CPU {
         self.set_16bit_register(
             &Registers::SP,
-            self.get_16bit_register(&Registers::SP).wrapping_add(value),
+            self.get_16bit_register(&Registers::SP).wrapping_add(value)
         )
     }
 
     fn decrement_sp(&self, value: u16) -> CPU {
-        return self.set_16bit_register(&Registers::SP, self.get_16bit_register(&Registers::SP).wrapping_sub(value));
+        self.set_16bit_register(
+            &Registers::SP,
+            self.get_16bit_register(&Registers::SP).wrapping_sub(value)
+        )
     }
 
     pub fn execute(&self, mem: &mut mem::Mem) -> CPU {
@@ -402,9 +405,8 @@ impl CPU {
             0x4f => self.load(&Registers::C, &Registers::A),
             0x7b => self.load(&Registers::A, &Registers::E),
             0xc5 => {
-                print!("PUSH BC\n");
-                self.push(mem, self.get_16bit_register(&Registers::BC));
-                return self.increment_pc(1);
+                print!("PUSH BC {}\n", self.get_16bit_register(&Registers::SP));
+                self.push(mem, self.get_16bit_register(&Registers::BC)).increment_pc(1)
             }
             0xc9 => self.ret(mem),
             0x17 => self.rla(), // RLA
