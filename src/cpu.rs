@@ -628,7 +628,7 @@ impl CPU {
     /// does not really pop (does not increment SP)
     fn stack_pop(&self, mem: &mem::Mem) -> u16 {
         let current_sp = self.get_16bit_register(&Registers::SP);
-        let lsb = mem.read(current_sp);
+        let lsb = mem.read(current_sp + 2);
         let msb = mem.read(current_sp + 1);
         self.combine_bytes(msb, lsb)
     }
