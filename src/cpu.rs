@@ -320,6 +320,8 @@ impl CPU {
             }
             0x22 => self.load_increment_hl_a(mem),
             0x23 => self.inc_16bit_register(&Registers::HL),
+            0x13 => self.inc_16bit_register(&Registers::DE),
+            0x3d => self.dec_8bit_register(&Registers::A),
             0x05 => self.dec_8bit_register(&Registers::B),
             0x0d => self.dec_8bit_register(&Registers::C),
             0x1d => self.dec_8bit_register(&Registers::E),
