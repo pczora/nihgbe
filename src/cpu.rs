@@ -405,7 +405,7 @@ impl CPU {
             0x4f => self.load(&Registers::C, &Registers::A),
             0x7b => self.load(&Registers::A, &Registers::E),
             0xc5 => {
-                print!("PUSH BC {}\n", self.get_16bit_register(&Registers::SP));
+                print!("PUSH BC\n");
                 self.push(mem, self.get_16bit_register(&Registers::BC)).increment_pc(1)
             }
             0xc9 => self.ret(mem),
