@@ -293,11 +293,13 @@ impl CPU {
                 return self
                     .set_16bit_register(&Registers::HL, data)
                     .increment_pc(3);
-            }
+            },
+            0x2e => self.ld_8bit_immediate(mem, &Registers::L),
             0x3e => self.ld_8bit_immediate(mem, &Registers::A),
             0x06 => self.ld_8bit_immediate(mem, &Registers::B),
             0x0e => self.ld_8bit_immediate(mem, &Registers::C),
-            0x16 => self.ld_8bit_immediate(mem, &Registers::E),
+            0x16 => self.ld_8bit_immediate(mem, &Registers::D),
+            0x1e => self.ld_8bit_immediate(mem, &Registers::E),
             0xf0 => {
                 let data = self.get_8bit_arg(mem) as u16;
                 print!("LD A, ({:#04x?})\n", 0xff00 + data);
@@ -326,18 +328,9 @@ impl CPU {
             0x0d => self.dec_8bit_register(&Registers::C),
             0x1d => self.dec_8bit_register(&Registers::E),
             0x25 => self.dec_8bit_register(&Registers::H),
-            0x20 => {
-                let data = self.get_8bit_arg(mem) as i8;
-                let pc = self.get_16bit_register(&Registers::PC) as i16;
-                // Jump relative to the byte _after_ JR
-                let target = pc.wrapping_add(data as i16 + 2);
-                print!("JR NZ {:#04x?} \t Target: {:#04x?}\n", data, target);
-                if !self.get_zero() {
-                    return self.set_16bit_register(&Registers::PC, target as u16);
-                } else {
-                    return self.increment_pc(2);
-                }
-            }
+            0x18 => self.jr(mem),
+            0x20 => self.jr_nonzero(mem),
+            0x28 => self.jr_zero(mem),
             0x1f => {
                 print!("RRA \n");
                 let old_carry: u8 = if self.get_carry() { 1 } else { 0 };
@@ -382,7 +375,13 @@ impl CPU {
                 );
                 return self.increment_pc(1);
             }
+            0x04 => return self.inc_8bit_register(&Registers::B),
+            0x14 => return self.inc_8bit_register(&Registers::D),
+            0x24 => return self.inc_8bit_register(&Registers::H),
             0x0c => return self.inc_8bit_register(&Registers::C),
+            0x1c => return self.inc_8bit_register(&Registers::E),
+            0x2c => return self.inc_8bit_register(&Registers::L),
+            0x3c => return self.inc_8bit_register(&Registers::A),
             0x77 => {
                 print!("LD (HL), A\n");
                 mem.write(
@@ -413,11 +412,49 @@ impl CPU {
             0xc9 => self.ret(mem),
             0x17 => self.rla(), // RLA
             0xc1 => self.pop(&Registers::BC, mem), // POP BC
+            0x67 => self.load_register_from_register(&Registers::H, &Registers::A),
+            0x57 => self.load_register_from_register(&Registers::D, &Registers::A),
             _ => {
                 print!("Unknown opcode: {:#04x?}\n", opcode);
                 panic!();
             }
         }
+    }
+
+    fn load_register_from_register(&self, to: &Registers, from: &Registers) -> CPU {
+            self.set_8bit_register(to, self.get_8bit_register(from)).increment_pc(1)
+    }
+
+    fn jr_nonzero(&self, mem: &mut mem::Mem) -> CPU {
+        print!("JR NZ ");
+        return if !self.get_zero() {
+            self.reljump(mem)
+        } else {
+            self.increment_pc(2)
+        }
+    }
+
+    fn jr_zero(&self, mem: &mut mem::Mem) -> CPU {
+        print!("JR Z ");
+        return if self.get_zero() {
+            self.reljump(mem)
+        } else {
+            self.increment_pc(2)
+        }
+    }
+
+    fn jr(&self, mem: &mut mem::Mem) -> CPU {
+        print!("JR ");
+        return self.reljump(mem);
+    }
+
+    fn reljump(&self, mem: &mut mem::Mem) -> CPU {
+        let data = self.get_8bit_arg(mem) as i8;
+        let pc = self.get_16bit_register(&Registers::PC) as i16;
+        // Jump relative to the byte _after_ JR
+        let target = pc.wrapping_add(data as i16 + 2);
+        print!("{:#04x?} \t Target: {:#04x?}\n", data, target);
+        return self.set_16bit_register(&Registers::PC, target as u16);
     }
 
     /// Mnemonic: LD r, n
