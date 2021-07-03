@@ -1,8 +1,16 @@
-mod cpu;
-mod mem;
+extern crate sdl2;
 
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use std::time::Duration;
 use std::env;
 use std::fs;
+use crate::mem::Mem;
+use crate::cpu::CPU;
+
+mod cpu;
+mod mem;
 
 const TITLE_START: u16 = 0x0134;
 const TITLE_END: u16 = 0x0143;
@@ -15,18 +23,38 @@ fn main() {
     let mut cpu = cpu::init_cpu();
     let mut mem = mem::init_mem(boot_rom, cart);
 
-    println!("{}", parse_title(&mem));
-    let num_instructions =
-        u32::from_str_radix(&args[3], 10).expect("Could not parse num_instructions parameter");
-    let mut count = 0u32;
-    loop {
-        count += 1;
-        cpu = cpu.execute(&mut mem);
-        if count == num_instructions {
-            break;
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsystem = sdl_context.video().unwrap();
+    let window = video_subsystem.window("nihgbe", 160, 140)
+        .position_centered()
+        .build()
+        .unwrap();
+
+    let mut canvas = window.into_canvas().build().unwrap();
+
+    canvas.set_draw_color(Color::RGB(255, 255, 255));
+    canvas.clear();
+    canvas.present();
+    let mut event_pump = sdl_context.event_pump().unwrap();
+    'running: loop {
+        cpu.update(&mut mem);
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit {..} |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    break 'running
+                },
+                _ => {}
+            }
         }
+        // The rest of the game loop goes here...
+
+        canvas.present();
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }
+
+
 
 fn parse_title(mem: &mem::Mem) -> String {
     let title_vec = mem.read_range(TITLE_START..TITLE_END);
