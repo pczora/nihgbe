@@ -534,9 +534,9 @@ impl CPU {
     /// Compares two values and sets flags accordingly
     fn compare(&self, a: u8, b: u8) -> CPU {
         //TODO: Set half carry
-        if (a as i8 - b as i8) == 0 {
+        if (a as i16 - b as i16) == 0 {
             return self.set_zero(true).set_subtract(true);
-        } else if (a as i8 - b as i8) < 0 {
+        } else if (a as i16 - b as i16) < 0 {
             return self.set_carry(true).set_zero(false);
         } else {
             return self.set_carry(false).set_zero(false);
