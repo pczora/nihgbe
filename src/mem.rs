@@ -95,4 +95,60 @@ impl Mem {
             );
         };
     }
+
+    /// Sets the nth bit
+    pub fn set_bit(&mut self, address: u16, bit: u8) {
+        let current_value = self.read(address);
+        self.write(address, current_value | (1 << bit))
+    }
+
+    /// Resets the nth bit
+    pub fn reset_bit(&mut self, address: u16, bit: u8) {
+        let current_value = self.read(address);
+        self.write(address, current_value & !(1 << bit))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_bit() {
+        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        mem.set_bit(0xc000, 5);
+        assert_eq!(mem.ram[0], 0b00100000);
+    }
+
+    #[test]
+    fn test_set_bit_not_overwriting() {
+        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        mem.ram[0] = 0xf0;
+        mem.set_bit(0xc000, 1);
+        assert_eq!(mem.ram[0], 0xf2);
+    }
+
+    #[test]
+    fn test_set_bit_already_set() {
+        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        mem.ram[0] = 0xf2;
+        mem.set_bit(0xc000, 1);
+        assert_eq!(mem.ram[0], 0xf2);
+    }
+
+    #[test]
+    fn test_reset_bit() {
+        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        mem.ram[0] = 0xff;
+        mem.reset_bit(0xc000, 1);
+        assert_eq!(mem.ram[0], 0b11111101);
+    }
+
+    #[test]
+    fn test_reset_bit_already_reset() {
+        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        mem.ram[0] = 0b11111101;
+        mem.reset_bit(0xc000, 1);
+        assert_eq!(mem.ram[0], 0b11111101);
+    }
 }
