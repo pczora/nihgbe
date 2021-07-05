@@ -280,7 +280,7 @@ impl CPU {
             0xc3 => {
                 let jp_dest = self.get_16bit_arg(mem);
                 print!("JP {:#04x?}\n", jp_dest);
-                return (self.set_16bit_register(&Registers::SP, jp_dest), 16);
+                return (self.set_16bit_register(&Registers::PC, jp_dest), 16);
             }
             0xAF => {
                 print!("XOR A\n");
