@@ -60,7 +60,7 @@ impl Mem {
             return self.vram[address_usize - VRAM_START as usize];
         } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
             return self.io_regs[address_usize - IO_REGISTERS_START as usize];
-        } else if address > INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
+        } else if address >= INTERNAL_RAM_START && address < ECHO_INTERNAL_RAM_START {
             return self.ram[address_usize - INTERNAL_RAM_START as usize];
         } else if address >= HIGH_RAM_AREA_START && address < INTERRUPT_ENABLE_REGISTER_START {
             return self.high_ram_area[address_usize - HIGH_RAM_AREA_START as usize];
