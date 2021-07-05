@@ -442,12 +442,18 @@ impl CPU {
             0x7d => self.load_register_from_register(&Registers::A, &Registers::L),
             0x57 => self.load_register_from_register(&Registers::D, &Registers::A),
             0x90 => self.sub(&Registers::B),
-            0xbe => { // CP (HL)
+            0xbe => {
+                // CP (HL)
                 print!("CP (HL)\n");
                 let value = mem.read(self.get_16bit_register(&Registers::HL));
-                (self.compare(self.get_8bit_register(&Registers::A), value).increment_pc(1), 8)
-            },
-            0x86 => { // ADD (HL)
+                (
+                    self.compare(self.get_8bit_register(&Registers::A), value)
+                        .increment_pc(1),
+                    8,
+                )
+            }
+            0x86 => {
+                // ADD (HL)
                 print!("ADD A, (HL)\n");
                 let value = mem.read(self.get_16bit_register(&Registers::HL));
                 self.add(&Registers::A, value)
@@ -758,7 +764,13 @@ impl CPU {
         // TODO: set half carry & carry
         let current_value = self.get_8bit_register(reg);
         let new_value = current_value.wrapping_add(rhs);
-        (self.set_8bit_register(reg, new_value).set_zero(new_value == 0).set_subtract(false).increment_pc(1), 8)
+        (
+            self.set_8bit_register(reg, new_value)
+                .set_zero(new_value == 0)
+                .set_subtract(false)
+                .increment_pc(1),
+            8,
+        )
     }
 }
 
