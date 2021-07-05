@@ -245,16 +245,6 @@ impl CPU {
             self.get_16bit_register(&Registers::SP).wrapping_sub(value),
         )
     }
-    pub fn update(&self, mut mem: &mut mem::Mem) -> CPU {
-        let mut cycles_left: i32 = CPU_FREQUENCY_HZ / 60;
-        let mut cpu = *self;
-        while cycles_left > 0 {
-            let (new_cpu, cycles) = cpu.execute(&mut mem);
-            cycles_left -= cycles as i32;
-            cpu = new_cpu;
-        }
-        return cpu;
-    }
 
     pub fn execute(&self, mem: &mut mem::Mem) -> (CPU, u8) {
         let opcode = mem.read(self.pc.get_16bit_value());
@@ -346,6 +336,7 @@ impl CPU {
             0x3d => self.dec_8bit_register(&Registers::A),
             0x05 => self.dec_8bit_register(&Registers::B),
             0x0d => self.dec_8bit_register(&Registers::C),
+            0x15 => self.dec_8bit_register(&Registers::D),
             0x1d => self.dec_8bit_register(&Registers::E),
             0x25 => self.dec_8bit_register(&Registers::H),
             0x18 => self.jr(mem),
@@ -446,7 +437,21 @@ impl CPU {
             0x17 => self.rla(),                    // RLA
             0xc1 => self.pop(&Registers::BC, mem), // POP BC
             0x67 => self.load_register_from_register(&Registers::H, &Registers::A),
+            0x78 => self.load_register_from_register(&Registers::A, &Registers::B),
+            0x7c => self.load_register_from_register(&Registers::A, &Registers::H),
+            0x7d => self.load_register_from_register(&Registers::A, &Registers::L),
             0x57 => self.load_register_from_register(&Registers::D, &Registers::A),
+            0x90 => self.sub(&Registers::B),
+            0xbe => { // CP (HL)
+                print!("CP (HL)\n");
+                let value = mem.read(self.get_16bit_register(&Registers::HL));
+                (self.compare(self.get_8bit_register(&Registers::A), value).increment_pc(1), 8)
+            },
+            0x86 => { // ADD (HL)
+                print!("ADD A, (HL)\n");
+                let value = mem.read(self.get_16bit_register(&Registers::HL));
+                self.add(&Registers::A, value)
+            }
             _ => {
                 print!("Unknown opcode: {:#04x?}\n", opcode);
                 panic!();
@@ -455,6 +460,7 @@ impl CPU {
     }
 
     fn load_register_from_register(&self, to: &Registers, from: &Registers) -> (CPU, u8) {
+        print!("LD {}, {}\n", to, from);
         (
             self.set_8bit_register(to, self.get_8bit_register(from))
                 .increment_pc(1),
@@ -467,6 +473,7 @@ impl CPU {
         return if !self.get_zero() {
             (self.reljump(mem), 12)
         } else {
+            print!("\n");
             (self.increment_pc(2), 8)
         };
     }
@@ -476,6 +483,7 @@ impl CPU {
         return if self.get_zero() {
             (self.reljump(mem), 12)
         } else {
+            print!("\n");
             (self.increment_pc(2), 8)
         };
     }
@@ -730,6 +738,27 @@ impl CPU {
         let lsb = mem.read(current_sp + 2);
         let msb = mem.read(current_sp + 1);
         self.combine_bytes(msb, lsb)
+    }
+
+    fn sub(&self, rhs: &Registers) -> (CPU, u8) {
+        // TODO: set half carry
+        let current_a = self.get_8bit_register(&Registers::A);
+        let rhs_value = self.get_8bit_register(rhs);
+        let new_a = current_a - rhs_value;
+
+        return (
+            self.set_8bit_register(&Registers::A, new_a)
+                .set_zero(new_a == 0)
+                .set_carry(rhs_value > current_a)
+                .increment_pc(1),
+            4,
+        );
+    }
+    fn add(&self, reg: &Registers, rhs: u8) -> (CPU, u8) {
+        // TODO: set half carry & carry
+        let current_value = self.get_8bit_register(reg);
+        let new_value = current_value.wrapping_add(rhs);
+        (self.set_8bit_register(reg, new_value).set_zero(new_value == 0).set_subtract(false).increment_pc(1), 8)
     }
 }
 
