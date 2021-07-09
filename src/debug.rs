@@ -8,7 +8,7 @@ pub fn dump_mem(mem: &mem::Mem) {
     // be an issue with the memory implementation
     let time = chrono::offset::Local::now();
     let mut file = File::create(format!("vram_dump_{}.bin", time)).expect("Unable to create vram dump file");
-    let dump = mem.dump_mem();
+    let dump = mem.dump();
     for byte in dump {
         file.write_all(&[byte]);
     }
