@@ -107,6 +107,11 @@ impl Mem {
         let current_value = self.read(address);
         self.write(address, current_value & !(1 << bit))
     }
+
+    pub fn dump_mem(&self) -> Vec<u8> {
+        let memdump = [&self.cart[..], &self.vram, &self.io_regs, &self.ram, &self.high_ram_area, &self.interrupt_enable_register].concat();
+        return memdump;
+    }
 }
 
 #[cfg(test)]

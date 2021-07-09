@@ -12,6 +12,7 @@ use std::time::Duration;
 mod cpu;
 mod mem;
 mod ppu;
+mod debug;
 
 const TITLE_START: u16 = 0x0134;
 const TITLE_END: u16 = 0x0143;
@@ -29,7 +30,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("nihgbe", 160, 140)
+        .window("nihgbe", 160, 144)
         .position_centered()
         .build()
         .unwrap();
@@ -61,7 +62,6 @@ fn main() {
             }
         }
 
-        canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }
