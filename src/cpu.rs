@@ -268,7 +268,7 @@ impl CPU {
                     // BIT 7, h
                     0x7c => {
                         //print!("BIT 7,H\n");
-                        let bit_is_zero = (1 & self.get_8bit_register(&Registers::H)) == 0;
+                        let bit_is_zero = (128 & self.get_8bit_register(&Registers::H)) == 0;
                         return (self.set_zero(bit_is_zero).increment_pc(2), 4 + 8);
                     }
                     // RL C
