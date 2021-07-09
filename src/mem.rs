@@ -78,6 +78,7 @@ impl Mem {
         if address < VRAM_START {
             panic!("Trying to write to invalid address: {:#4x?}", address);
         } else if address >= VRAM_START && address < CARTRIDGE_RAM_START {
+            println!("Writing to vram at address: {:#04x?}, {:#04x?}", address, data);
             self.vram[address_usize - VRAM_START as usize] = data;
         } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
             self.io_regs[address_usize - IO_REGISTERS_START as usize] = data;

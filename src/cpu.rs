@@ -1,6 +1,7 @@
 use super::mem;
 use super::debug;
 use std::process::exit;
+use std::fmt::Formatter;
 
 const ZERO_FLAG: u8 = 0b10000000;
 const SUBTRACT_FLAG: u8 = 0b01000000;
@@ -17,12 +18,23 @@ pub struct CPU {
     pc: Register,
 }
 
+impl std::fmt::Display for CPU {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "af: {}\nbc: {}\nde: {}\nhl: {}\nsp: {}\npc: {}", self.af, self.bc, self.de, self.hl, self.sp, self.pc)
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct Register {
     high_byte: u8,
     low_byte: u8,
 }
 
+impl std::fmt::Display for Register {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#04x?}{:02x?}", self.high_byte, self.low_byte)
+    }
+}
 pub fn init_register(high_byte: u8, low_byte: u8) -> Register {
     return Register {
         high_byte,
@@ -252,9 +264,9 @@ impl CPU {
     pub fn execute(&self, mem: &mut mem::Mem) -> (CPU, u8) {
         let opcode = mem.read(self.pc.get_16bit_value());
         //print!("{:#04x?}\t", self.pc.get_16bit_value());
-        if self.pc.get_16bit_value() == 0x00fe {
-            println!("Dumping ram and exiting");
+        if self.pc.get_16bit_value() == 0x00a4 {
             debug::dump_mem(mem);
+            print!("{}", self);
             exit(0);
         }
         match opcode {
