@@ -75,7 +75,7 @@ impl Mem {
     pub fn write(&mut self, address: u16, data: u8) {
         let address_usize = address as usize;
 
-        if address <= VRAM_START {
+        if address < VRAM_START {
             panic!("Trying to write to invalid address: {:#4x?}", address);
         } else if address >= VRAM_START && address < CARTRIDGE_RAM_START {
             self.vram[address_usize - VRAM_START as usize] = data;
