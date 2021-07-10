@@ -13,6 +13,7 @@ mod cpu;
 mod mem;
 mod ppu;
 mod debug;
+mod registers;
 
 const TITLE_START: u16 = 0x0134;
 const TITLE_END: u16 = 0x0143;

@@ -2,6 +2,8 @@ use super::mem;
 use super::debug;
 use std::process::exit;
 use std::fmt::Formatter;
+use super::registers::{Register, Registers};
+use super::registers;
 
 const ZERO_FLAG: u8 = 0b10000000;
 const SUBTRACT_FLAG: u8 = 0b01000000;
@@ -24,95 +26,7 @@ impl std::fmt::Display for CPU {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct Register {
-    high_byte: u8,
-    low_byte: u8,
-}
 
-impl std::fmt::Display for Register {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#04x?}{:02x?}", self.high_byte, self.low_byte)
-    }
-}
-pub fn init_register(high_byte: u8, low_byte: u8) -> Register {
-    return Register {
-        high_byte,
-        low_byte,
-    };
-}
-
-pub fn init_16bit_register(value: u16) -> Register {
-    return Register {
-        high_byte: (value >> 8) as u8,
-        low_byte: (value & 0x00ff) as u8,
-    };
-}
-
-impl Register {
-    pub fn get_high_byte(&self) -> u8 {
-        return self.high_byte;
-    }
-    pub fn get_low_byte(&self) -> u8 {
-        return self.low_byte;
-    }
-    pub fn set_high_byte(&self, byte: u8) -> Register {
-        return Register {
-            high_byte: byte,
-            ..*self
-        };
-    }
-    pub fn get_16bit_value(&self) -> u16 {
-        return (self.high_byte as u16) << 8 | self.low_byte as u16;
-    }
-    pub fn set_low_byte(&self, byte: u8) -> Register {
-        return Register {
-            low_byte: byte,
-            ..*self
-        };
-    }
-    pub fn set_16bit_value(&self, bytes: u16) -> Register {
-        return init_16bit_register(bytes);
-    }
-}
-
-enum Registers {
-    A,
-    Flags,
-    B,
-    C,
-    D,
-    E,
-    H,
-    L,
-    AF,
-    BC,
-    DE,
-    HL,
-    SP,
-    PC,
-}
-
-impl std::fmt::Display for Registers {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            Registers::AF => write!(f, "AF"),
-            Registers::BC => write!(f, "BC"),
-            Registers::DE => write!(f, "DE"),
-            Registers::HL => write!(f, "HL"),
-            Registers::SP => write!(f, "SP"),
-            Registers::PC => write!(f, "PC"),
-            Registers::A => write!(f, "A"),
-            Registers::Flags => write!(f, "Flags"),
-            Registers::B => write!(f, "B"),
-            Registers::C => write!(f, "C"),
-            Registers::D => write!(f, "D"),
-            Registers::E => write!(f, "E"),
-            Registers::H => write!(f, "H"),
-            Registers::L => write!(f, "L"),
-        }
-    }
-}
 
 const CPU_FREQUENCY_HZ: i32 = 4_194_304;
 
@@ -147,37 +61,37 @@ impl CPU {
         match reg {
             Registers::AF => {
                 return CPU {
-                    af: init_16bit_register(value),
+                    af: registers::init_16bit_register(value),
                     ..*self
                 };
             }
             Registers::BC => {
                 return CPU {
-                    bc: init_16bit_register(value),
+                    bc: registers::init_16bit_register(value),
                     ..*self
                 };
             }
             Registers::DE => {
                 return CPU {
-                    de: init_16bit_register(value),
+                    de: registers::init_16bit_register(value),
                     ..*self
                 };
             }
             Registers::HL => {
                 return CPU {
-                    hl: init_16bit_register(value),
+                    hl: registers::init_16bit_register(value),
                     ..*self
                 };
             }
             Registers::SP => {
                 return CPU {
-                    sp: init_16bit_register(value),
+                    sp: registers::init_16bit_register(value),
                     ..*self
                 };
             }
             Registers::PC => {
                 return CPU {
-                    pc: init_16bit_register(value),
+                    pc: registers::init_16bit_register(value),
                     ..*self
                 };
             }
@@ -191,49 +105,49 @@ impl CPU {
         match reg {
             Registers::A => {
                 return CPU {
-                    af: init_register(value, self.af.low_byte),
+                    af: registers::init_register(value, self.af.low_byte),
                     ..*self
                 };
             }
             Registers::Flags => {
                 return CPU {
-                    af: init_register(self.af.high_byte, value),
+                    af: registers::init_register(self.af.high_byte, value),
                     ..*self
                 };
             }
             Registers::B => {
                 return CPU {
-                    bc: init_register(value, self.bc.low_byte),
+                    bc: registers::init_register(value, self.bc.low_byte),
                     ..*self
                 };
             }
             Registers::C => {
                 return CPU {
-                    bc: init_register(self.bc.high_byte, value),
+                    bc: registers::init_register(self.bc.high_byte, value),
                     ..*self
                 };
             }
             Registers::D => {
                 return CPU {
-                    de: init_register(value, self.de.low_byte),
+                    de: registers::init_register(value, self.de.low_byte),
                     ..*self
                 };
             }
             Registers::E => {
                 return CPU {
-                    de: init_register(self.de.high_byte, value),
+                    de: registers::init_register(self.de.high_byte, value),
                     ..*self
                 };
             }
             Registers::H => {
                 return CPU {
-                    hl: init_register(value, self.hl.low_byte),
+                    hl: registers::init_register(value, self.hl.low_byte),
                     ..*self
                 };
             }
             Registers::L => {
                 return CPU {
-                    hl: init_register(self.hl.high_byte, value),
+                    hl: registers::init_register(self.hl.high_byte, value),
                     ..*self
                 };
             }
@@ -796,12 +710,12 @@ impl CPU {
 
 pub fn init_cpu() -> CPU {
     CPU {
-        af: init_16bit_register(0),
-        bc: init_16bit_register(0),
-        de: init_16bit_register(0),
-        hl: init_16bit_register(0),
-        sp: init_16bit_register(0xfffe),
-        pc: init_16bit_register(0),
+        af: registers::init_16bit_register(0),
+        bc: registers::init_16bit_register(0),
+        de: registers::init_16bit_register(0),
+        hl: registers::init_16bit_register(0),
+        sp: registers::init_16bit_register(0xfffe),
+        pc: registers::init_16bit_register(0),
     }
 }
 
@@ -822,12 +736,12 @@ mod tests {
     #[test]
     fn test_get_zero() {
         let cpu = CPU {
-            af: init_register(0, 0b10000000),
-            bc: init_16bit_register(0),
-            de: init_16bit_register(0),
-            hl: init_16bit_register(0),
-            sp: init_16bit_register(0),
-            pc: init_16bit_register(0),
+            af: registers::init_register(0, 0b10000000),
+            bc: registers::init_16bit_register(0),
+            de: registers::init_16bit_register(0),
+            hl: registers::init_16bit_register(0),
+            sp: registers::init_16bit_register(0),
+            pc: registers::init_16bit_register(0),
         };
         assert!(cpu.get_zero())
     }
@@ -835,12 +749,12 @@ mod tests {
     #[test]
     fn test_unset_zero() {
         let cpu = CPU {
-            af: init_register(0, 0b10000000),
-            bc: init_16bit_register(0),
-            de: init_16bit_register(0),
-            hl: init_16bit_register(0),
-            sp: init_16bit_register(0),
-            pc: init_16bit_register(0),
+            af: registers::init_register(0, 0b10000000),
+            bc: registers::init_16bit_register(0),
+            de: registers::init_16bit_register(0),
+            hl: registers::init_16bit_register(0),
+            sp: registers::init_16bit_register(0),
+            pc: registers::init_16bit_register(0),
         };
         let new_cpu = cpu.set_zero(false);
         assert_eq!(new_cpu.get_8bit_register(&Registers::Flags) & ZERO_FLAG, 0)
