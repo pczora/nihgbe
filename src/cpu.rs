@@ -198,9 +198,9 @@ impl CPU {
                         return (self.set_zero(bit_is_zero).increment_pc(2), 4 + 8);
                     }
                     // RL C
-                    0x11 => (self.prefixed_rotate_left(&Registers::C), 4 + 8),
+                    0x11 => (self.prefixed_rotate_left_through_carry(&Registers::C), 4 + 8),
                     // RL A
-                    0x17 => (self.prefixed_rotate_left(&Registers::A), 4 + 8),
+                    0x17 => (self.prefixed_rotate_left_through_carry(&Registers::A), 4 + 8),
                     _ => {
                         //print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
                         panic!()
@@ -603,21 +603,23 @@ impl CPU {
         return new_state;
     }
 
-    fn prefixed_rotate_left(&self, reg: &Registers) -> CPU {
+    fn prefixed_rotate_left_through_carry(&self, reg: &Registers) -> CPU {
         //print!("RL {}\n", reg);
         self.rotate_left(reg).increment_pc(2)
     }
 
     fn rla(&self) -> (CPU, u8) {
         //print!("RLA\n");
-        (self.rotate_left(&Registers::A).increment_pc(1), 4)
+        (self.rotate_left(&Registers::A).increment_pc(1).set_zero(false), 4)
     }
 
     fn rotate_left(&self, reg: &Registers) -> CPU {
         let current_value = self.get_8bit_register(reg);
-        let carry = (current_value & 0b10000000) == 128;
-        let new_value = current_value << 1;
-        self.set_carry(carry)
+        let old_carry = self.get_carry();
+        let new_carry = (current_value & 0b10000000) == 128;
+        let carry_shiftin = if old_carry {1} else {0};
+        let new_value = (current_value << 1) | carry_shiftin;
+        self.set_carry(new_carry)
             .set_zero(new_value == 0)
             .set_8bit_register(reg, new_value)
     }
@@ -772,11 +774,24 @@ mod tests {
 
     #[test]
     fn test_prefixed_rotate_left() {
-        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b10000000);
-        let new_cpu = cpu.prefixed_rotate_left(&Registers::A);
-        assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0);
+        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b10000000).set_carry(true);
+        let new_cpu = cpu.prefixed_rotate_left_through_carry(&Registers::A);
+        assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0b00000001);
         assert!(new_cpu.get_carry());
-        assert!(new_cpu.get_zero());
+        assert!(!new_cpu.get_zero());
+        assert_eq!(
+            new_cpu.get_16bit_register(&Registers::PC),
+            cpu.get_16bit_register(&Registers::PC) + 2
+        );
+    }
+
+    #[test]
+    fn test_prefixed_rotate_left_rotat_carry_in() {
+        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b00000000).set_carry(true);
+        let new_cpu = cpu.prefixed_rotate_left_through_carry(&Registers::A);
+        assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0b00000001);
+        assert!(!new_cpu.get_carry());
+        assert!(!new_cpu.get_zero());
         assert_eq!(
             new_cpu.get_16bit_register(&Registers::PC),
             cpu.get_16bit_register(&Registers::PC) + 2

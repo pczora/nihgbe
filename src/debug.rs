@@ -11,6 +11,6 @@ pub fn dump_mem(mem: &mem::Mem) {
     let mut file = File::create(format!("mem_dump_{}.bin", time)).expect("Unable to create vram dump file");
     let dump = mem.dump();
     for byte in dump {
-        file.write_all(&[byte]);
+        file.write_all(&[byte]).expect("Failed to write byte to file");
     }
 }
