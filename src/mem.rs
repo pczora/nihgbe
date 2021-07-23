@@ -78,7 +78,6 @@ impl Mem {
         if address < VRAM_START {
             panic!("Trying to write to invalid address: {:#4x?}", address);
         } else if address >= VRAM_START && address < CARTRIDGE_RAM_START {
-            println!("Writing to vram at address: {:#04x?}, {:#04x?}", address, data);
             self.vram[address_usize - VRAM_START as usize] = data;
         } else if address >= IO_REGISTERS_START && address < EMPTY_UNUSABLE_1_START {
             self.io_regs[address_usize - IO_REGISTERS_START as usize] = data;
@@ -110,7 +109,15 @@ impl Mem {
     }
 
     pub fn dump(&self) -> Vec<u8> {
-        let memdump = [&self.cart[..], &self.vram, &self.io_regs, &self.ram, &self.high_ram_area, &self.interrupt_enable_register].concat();
+        let memdump = [
+            &self.cart[..],
+            &self.vram,
+            &self.io_regs,
+            &self.ram,
+            &self.high_ram_area,
+            &self.interrupt_enable_register,
+        ]
+        .concat();
         return memdump;
     }
 }
@@ -121,14 +128,14 @@ mod tests {
 
     #[test]
     fn test_set_bit() {
-        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        let mem = &mut init_mem(vec![0; 256], vec![0; 1024 * 1024]);
         mem.set_bit(0xc000, 5);
         assert_eq!(mem.ram[0], 0b00100000);
     }
 
     #[test]
     fn test_set_bit_not_overwriting() {
-        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        let mem = &mut init_mem(vec![0; 256], vec![0; 1024 * 1024]);
         mem.ram[0] = 0xf0;
         mem.set_bit(0xc000, 1);
         assert_eq!(mem.ram[0], 0xf2);
@@ -136,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_set_bit_already_set() {
-        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        let mem = &mut init_mem(vec![0; 256], vec![0; 1024 * 1024]);
         mem.ram[0] = 0xf2;
         mem.set_bit(0xc000, 1);
         assert_eq!(mem.ram[0], 0xf2);
@@ -144,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_reset_bit() {
-        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        let mem = &mut init_mem(vec![0; 256], vec![0; 1024 * 1024]);
         mem.ram[0] = 0xff;
         mem.reset_bit(0xc000, 1);
         assert_eq!(mem.ram[0], 0b11111101);
@@ -152,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_reset_bit_already_reset() {
-        let mem = &mut init_mem(vec![0; 256], vec!{0; 1024 * 1024});
+        let mem = &mut init_mem(vec![0; 256], vec![0; 1024 * 1024]);
         mem.ram[0] = 0b11111101;
         mem.reset_bit(0xc000, 1);
         assert_eq!(mem.ram[0], 0b11111101);

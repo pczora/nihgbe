@@ -178,7 +178,7 @@ impl CPU {
     pub fn execute(&self, mem: &mut mem::Mem) -> (CPU, u8) {
         let opcode = mem.read(self.pc.get_16bit_value());
         //print!("{:#04x?}\t", self.pc.get_16bit_value());
-        if self.pc.get_16bit_value() == 0x00a4 {
+        if self.pc.get_16bit_value() == 0x00fc {
             debug::dump_mem(mem);
             print!("{}", self);
             exit(0);

@@ -7,6 +7,8 @@ pub struct PPU {
 
 const ADDR_LY: u16 = 0xff44;
 const ADDR_LSTAT: u16 = 0xff41;
+const ADDR_SCY: u16 = 0xff42;
+const ADDR_SCX: u16 = 0xff43;
 
 impl PPU {
     pub fn update(&self, cycles: u8, mem: &mut mem::Mem) -> PPU {
@@ -24,6 +26,15 @@ impl PPU {
                 mem.write(ADDR_LY, 0);
             } else if current_line < 144 {
                 //TODO: Draw scanline
+                // Adressing mode? For now, only consider 0x8000 (LCDC.4=1)
+                let vram_addr = 0x8000;
+                let ty = mem.read(ADDR_SCY).wrapping_add(current_line) / 8;
+                for pixel in 0..=160 {
+                    let tx = (mem.read(ADDR_SCX) + pixel) / 8;
+                    let tile_offset_addr = 0x9800 + ty as u16 * 32 + tx as u16;
+                    let tile_offset = mem.read(tile_offset_addr);
+                    // TODO: Get tile, get pixel in tile, draw
+                }
             }
             return init_ppu();
         }
@@ -53,13 +64,11 @@ impl PPU {
                 mem.set_bit(ADDR_LSTAT, 1);
                 mem.set_bit(ADDR_LSTAT, 0);
                 //TODO: Interrupt
-
             }
             249..=456 => {
                 mem.reset_bit(ADDR_LSTAT, 1);
                 mem.reset_bit(ADDR_LSTAT, 0);
                 //TODO: Interrupt
-
             }
             _ => {
                 mem.reset_bit(ADDR_LSTAT, 1);
@@ -68,7 +77,6 @@ impl PPU {
             }
         }
     }
-
 }
 
 pub fn init_ppu() -> PPU {
