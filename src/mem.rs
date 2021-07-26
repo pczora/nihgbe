@@ -44,6 +44,10 @@ impl Mem {
         return bytes;
     }
 
+    pub fn read_bytes(&self, start: u16, length: usize) -> Vec<u8> {
+        self.read_range(start..start + length as u16)
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         let address_usize = address as usize;
 
@@ -125,6 +129,18 @@ impl Mem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::iter;
+
+    #[test]
+    fn test_read_bytes() {
+        let boot_rom = (0..255).collect();
+        let mem = &mut init_mem(boot_rom, vec![0; 1024 * 1024]);
+        let bytes = mem.read_bytes(0x000F, 16);
+        assert_eq!(bytes.len(), 16);
+        assert_eq!(bytes[0], 0xF);
+        assert_eq!(bytes[7], 0x16);
+        assert_eq!(bytes[15], 0x1E);
+    }
 
     #[test]
     fn test_set_bit() {
