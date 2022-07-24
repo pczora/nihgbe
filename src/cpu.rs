@@ -1,9 +1,9 @@
-use super::mem;
 use super::debug;
-use std::process::exit;
-use std::fmt::Formatter;
-use super::registers::{Register, Registers};
+use super::mem;
 use super::registers;
+use super::registers::{Register, Registers};
+use std::fmt::Formatter;
+use std::process::exit;
 
 const ZERO_FLAG: u8 = 0b10000000;
 const SUBTRACT_FLAG: u8 = 0b01000000;
@@ -22,16 +22,18 @@ pub struct CPU {
 
 impl std::fmt::Display for CPU {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "af: {}\nbc: {}\nde: {}\nhl: {}\nsp: {}\npc: {}", self.af, self.bc, self.de, self.hl, self.sp, self.pc)
+        write!(
+            f,
+            "af: {}\nbc: {}\nde: {}\nhl: {}\nsp: {}\npc: {}\n",
+            self.af, self.bc, self.de, self.hl, self.sp, self.pc
+        )
     }
 }
-
-
 
 const CPU_FREQUENCY_HZ: i32 = 4_194_304;
 
 impl CPU {
-    fn get_16bit_register(&self, reg: &Registers) -> u16 {
+    pub fn get_16bit_register(&self, reg: &Registers) -> u16 {
         match reg {
             Registers::AF => self.af.get_16bit_value(),
             Registers::BC => self.bc.get_16bit_value(),
@@ -43,7 +45,7 @@ impl CPU {
         }
     }
 
-    fn get_8bit_register(&self, reg: &Registers) -> u8 {
+    pub fn get_8bit_register(&self, reg: &Registers) -> u8 {
         match reg {
             Registers::A => self.af.get_high_byte(),
             Registers::Flags => self.af.get_low_byte(),
@@ -177,12 +179,6 @@ impl CPU {
 
     pub fn execute(&self, mem: &mut mem::Mem) -> (CPU, u8) {
         let opcode = mem.read(self.pc.get_16bit_value());
-        //print!("{:#04x?}\t", self.pc.get_16bit_value());
-        if self.pc.get_16bit_value() == 0x00fc {
-            debug::dump_mem(mem);
-            print!("{}", self);
-            exit(0);
-        }
         match opcode {
             0x31 => self.load_16bit_immediate(mem, &Registers::SP),
             0x11 => self.load_16bit_immediate(mem, &Registers::DE),
@@ -198,9 +194,15 @@ impl CPU {
                         return (self.set_zero(bit_is_zero).increment_pc(2), 4 + 8);
                     }
                     // RL C
-                    0x11 => (self.prefixed_rotate_left_through_carry(&Registers::C), 4 + 8),
+                    0x11 => (
+                        self.prefixed_rotate_left_through_carry(&Registers::C),
+                        4 + 8,
+                    ),
                     // RL A
-                    0x17 => (self.prefixed_rotate_left_through_carry(&Registers::A), 4 + 8),
+                    0x17 => (
+                        self.prefixed_rotate_left_through_carry(&Registers::A),
+                        4 + 8,
+                    ),
                     _ => {
                         //print!("Invalid or unimplemented 16 byte opcode: {:#04x?}", data);
                         panic!()
@@ -610,14 +612,19 @@ impl CPU {
 
     fn rla(&self) -> (CPU, u8) {
         //print!("RLA\n");
-        (self.rotate_left(&Registers::A).increment_pc(1).set_zero(false), 4)
+        (
+            self.rotate_left(&Registers::A)
+                .increment_pc(1)
+                .set_zero(false),
+            4,
+        )
     }
 
     fn rotate_left(&self, reg: &Registers) -> CPU {
         let current_value = self.get_8bit_register(reg);
         let old_carry = self.get_carry();
         let new_carry = (current_value & 0b10000000) == 128;
-        let carry_shiftin = if old_carry {1} else {0};
+        let carry_shiftin = if old_carry { 1 } else { 0 };
         let new_value = (current_value << 1) | carry_shiftin;
         self.set_carry(new_carry)
             .set_zero(new_value == 0)
@@ -774,7 +781,9 @@ mod tests {
 
     #[test]
     fn test_prefixed_rotate_left() {
-        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b10000000).set_carry(true);
+        let cpu = init_cpu()
+            .set_8bit_register(&Registers::A, 0b10000000)
+            .set_carry(true);
         let new_cpu = cpu.prefixed_rotate_left_through_carry(&Registers::A);
         assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0b00000001);
         assert!(new_cpu.get_carry());
@@ -787,7 +796,9 @@ mod tests {
 
     #[test]
     fn test_prefixed_rotate_left_rotat_carry_in() {
-        let cpu = init_cpu().set_8bit_register(&Registers::A, 0b00000000).set_carry(true);
+        let cpu = init_cpu()
+            .set_8bit_register(&Registers::A, 0b00000000)
+            .set_carry(true);
         let new_cpu = cpu.prefixed_rotate_left_through_carry(&Registers::A);
         assert_eq!(new_cpu.get_8bit_register(&Registers::A), 0b00000001);
         assert!(!new_cpu.get_carry());

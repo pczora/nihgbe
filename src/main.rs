@@ -7,6 +7,8 @@ use std::env;
 use std::fs;
 use std::time::Duration;
 
+use crate::debug::dump_mem;
+
 mod cpu;
 mod debug;
 mod mem;
@@ -41,14 +43,29 @@ fn main() {
     canvas.clear();
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut paused = false;
+    let mut breakpoint = 0x0235;
+    let mut breakpoint_hit = false;
+    println!("Running: {}", parse_title(&mem));
     'running: loop {
         let mut cycles_left: i32 = CPU_FREQUENCY_HZ / 60;
 
-        while cycles_left > 0 {
-            let (new_cpu, cycles) = cpu.execute(&mut mem);
-            cycles_left -= cycles as i32;
-            cpu = new_cpu;
-            ppu = ppu.update(cycles, &mut mem);
+        let pc = cpu.get_16bit_register(&registers::Registers::PC);
+        if !paused {
+            println!("{:#06x}", pc);
+            if pc == breakpoint && breakpoint_hit == false {
+                println!("Hit breakpoint: {:#06x}", breakpoint);
+                paused = true;
+                breakpoint_hit = true;
+            } else {
+                while cycles_left > 0 {
+                    let (new_cpu, cycles) = cpu.execute(&mut mem);
+                    cycles_left -= cycles as i32;
+                    cpu = new_cpu;
+                    ppu = ppu.update(cycles, &mut mem);
+                }
+                breakpoint_hit = false;
+            }
         }
 
         for event in event_pump.poll_iter() {
@@ -58,6 +75,28 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
+                Event::KeyDown {
+                    keycode: Some(Keycode::F5),
+                    ..
+                } => {
+                    paused = false;
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::F6),
+                    ..
+                } => {
+                    breakpoint_hit = false;
+                    paused = false;
+                    breakpoint = 0;
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::F12),
+                    ..
+                } => {
+                    println!("{}", cpu);
+                    println!("{:#06x}", mem.read(pc));
+                    println!("{:#06x}", mem.read(pc + 1));
+                }
                 _ => {}
             }
         }
